@@ -1,0 +1,162 @@
+import Link from "next/link";
+import { Car, Mail, Phone, MapPin } from "lucide-react";
+
+/* Inline SVG social icons since lucide-react doesn't include brand icons */
+const FacebookIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+  </svg>
+);
+
+const TwitterIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+
+const InstagramIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+  </svg>
+);
+
+const YoutubeIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+    <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+  </svg>
+);
+
+const footerLinks = {
+  "Buy & Sell": [
+    { label: "Used Cars", href: "/buy-car" },
+    { label: "New Cars", href: "/buy-car" },
+    { label: "Sell Your Car", href: "/sell-car" },
+    { label: "Car Financing", href: "#" },
+    { label: "Car Insurance", href: "/insurance" },
+  ],
+  Explore: [
+    { label: "Car Reviews", href: "/reviews" },
+    { label: "Car Comparisons", href: "/compare" },
+    { label: "Price Calculator", href: "/calculator" },
+    { label: "Car Inspection", href: "/inspection" },
+    { label: "Blog", href: "/blog" },
+  ],
+  Company: [
+    { label: "About Us", href: "/about" },
+    { label: "Register", href: "/register" },
+    { label: "Become a Dealer", href: "/become-dealer" },
+    { label: "Careers", href: "/careers" },
+    { label: "Contact", href: "/contact" },
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Terms of Service", href: "/terms" },
+  ],
+};
+
+const socialLinks = [
+  { icon: FacebookIcon, href: "#", label: "Facebook" },
+  { icon: TwitterIcon, href: "#", label: "Twitter" },
+  { icon: InstagramIcon, href: "#", label: "Instagram" },
+  { icon: YoutubeIcon, href: "#", label: "YouTube" },
+];
+
+export function Footer() {
+  return (
+    <footer className="relative border-t border-gray-200 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Main Footer */}
+        <div className="py-12 sm:py-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-10">
+          {/* Brand Column */}
+          <div className="flex flex-col items-center text-center lg:items-start lg:text-left sm:col-span-2">
+            <Link href="/" className="inline-flex items-center gap-2.5 mb-4 sm:mb-5">
+              <div className="w-9 h-9 rounded-lg bg-[#0055FE] flex items-center justify-center">
+                <Car className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-lg font-bold text-gray-900 leading-none">
+                  Car<span className="text-[#0055FE]">Fever</span>
+                </span>
+                <span className="text-[10px] text-gray-500 tracking-[0.2em] uppercase leading-none mt-0.5">
+                  Marketplace
+                </span>
+              </div>
+            </Link>
+            <p className="text-xs sm:text-sm text-gray-600 max-w-sm mb-6 leading-relaxed">
+              Pakistan&apos;s most trusted automotive marketplace. Find your dream
+              car with verified listings, professional inspections, and
+              transparent pricing.
+            </p>
+
+            {/* Contact Info */}
+            <div className="flex flex-col items-center lg:items-start space-y-2.5">
+              <a
+                href="tel:+921234567890"
+                className="flex items-center gap-2.5 text-xs sm:text-sm text-gray-600 hover:text-[#0055FE] transition-colors min-h-[44px] sm:min-h-0"
+                suppressHydrationWarning
+              >
+                <Phone className="w-4 h-4 text-[#0055FE]" />
+                +92 123 456 7890
+              </a>
+              <a
+                href="mailto:info@carfever.pk"
+                className="flex items-center gap-2.5 text-xs sm:text-sm text-gray-600 hover:text-[#0055FE] transition-colors min-h-[44px] sm:min-h-0"
+                suppressHydrationWarning
+              >
+                <Mail className="w-4 h-4 text-[#0055FE]" />
+                info@carfever.pk
+              </a>
+              <div className="flex items-center gap-2.5 text-xs sm:text-sm text-gray-600">
+                <MapPin className="w-4 h-4 text-[#0055FE]" />
+                Lahore, Pakistan
+              </div>
+            </div>
+          </div>
+
+          {/* Link Columns */}
+          {Object.entries(footerLinks).map(([title, links]) => (
+            <div key={title} className="flex flex-col items-center text-center lg:items-start lg:text-left">
+              <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wider">
+                {title}
+              </h3>
+              <ul className="space-y-2.5">
+                {links.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="text-xs sm:text-sm text-gray-600 hover:text-[#0055FE] transition-colors duration-200 block py-1.5 sm:py-0"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="py-6 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-gray-500 text-center sm:text-left">
+            © {new Date().getFullYear()} Car Fever. All rights reserved.
+          </p>
+
+          {/* Social Links */}
+          <div className="flex items-center gap-3">
+            {socialLinks.map((social) => {
+              const Icon = social.icon;
+              return (
+                <a
+                  key={social.label}
+                  href={social.href}
+                  aria-label={social.label}
+                  className="p-2.5 rounded-lg text-gray-400 hover:text-[#0055FE] hover:bg-gray-100 transition-all duration-200 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                >
+                  <Icon />
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}

@@ -1,0 +1,306 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  Car,
+  Lock,
+  Mail,
+  AlertCircle,
+  ArrowRight,
+  Loader2,
+  ShieldCheck,
+  Zap,
+  TrendingUp,
+  ChevronLeft,
+  UserPlus,
+} from "lucide-react";
+import { loginAdmin } from "@/lib/admin-actions";
+import { createClient } from "@/lib/supabase/client";
+
+export default function AdminLoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const errParam = params.get("error");
+      if (errParam === "rate_limited") {
+        setError("Too many requests. Please wait a moment before trying again.");
+      } else if (errParam === "unauthorized") {
+        setError("Please sign in with an admin account to access the portal.");
+      }
+    }
+
+    async function checkSession() {
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          router.replace("/admin/dashboard");
+        }
+      } catch {
+        // Continue to login page
+      }
+      setChecking(false);
+    }
+    checkSession();
+  }, [router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const result = await loginAdmin(email.trim(), password);
+
+      if (result.success && result.user) {
+        router.replace("/admin/dashboard");
+      }
+    } catch (err: any) {
+      const msg = err?.message || "";
+      if (msg.includes("Failed to fetch") || msg.includes("fetch failed")) {
+        setError("Network connection issue. Please check your internet connection or reload the page.");
+      } else {
+        setError(msg || "Invalid email or password. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-full border-3 border-[#0055FE] border-t-transparent animate-spin" />
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+            Initializing Portal…
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row font-sans text-slate-900">
+      
+      {/* ── LEFT PANEL: BRANDING & HERO SHOWCASE ── */}
+      <div className="lg:w-1/2 bg-gradient-to-br from-[#0043cb] via-[#0055FE] to-[#0080ff] relative overflow-hidden p-8 sm:p-12 lg:p-16 flex flex-col justify-between text-white min-h-[400px] lg:min-h-screen">
+        {/* Background Decorative Circles & Glass Orbs */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 rounded-full bg-blue-400/20 blur-3xl pointer-events-none" />
+        
+        {/* Top Header Logo */}
+        <div className="relative z-10">
+          <Link href="/" className="inline-flex items-center gap-3 group">
+            <div className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <Car className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xl font-extrabold tracking-tight text-white leading-none">
+                Car<span className="text-blue-200">Fever</span>
+              </span>
+              <span className="text-[10px] text-blue-100/80 tracking-[0.2em] uppercase font-semibold mt-1">
+                Admin Console
+              </span>
+            </div>
+          </Link>
+        </div>
+
+        {/* Center Hero Content */}
+        <div className="relative z-10 my-auto py-12 max-w-lg">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-xs font-semibold mb-6">
+            <ShieldCheck className="w-4 h-4 text-emerald-300" />
+            <span>Enterprise Control Hub</span>
+          </div>
+
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-4">
+            Manage & Scale <br />
+            CarFever Marketplace
+          </h1>
+
+          <p className="text-base text-blue-100/90 leading-relaxed mb-8">
+            Access administrative controls, oversee vehicle verification, process staff registrations, and track real-time marketplace analytics.
+          </p>
+
+          {/* Feature Badges */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-white/15">
+                <Zap className="w-5 h-5 text-amber-300" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white">Live Operations</h4>
+                <p className="text-xs text-blue-100/80 mt-0.5">Instant listing approval & seller management</p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-white/15">
+                <TrendingUp className="w-5 h-5 text-emerald-300" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white">Advanced RBAC</h4>
+                <p className="text-xs text-blue-100/80 mt-0.5">Role-level inspection & content security</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Stat Footer */}
+        <div className="relative z-10 pt-6 border-t border-white/15 flex items-center justify-between text-xs text-blue-100/70">
+          <span>© 2026 CarFever Inc.</span>
+          <span className="flex items-center gap-1.5 font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            System Status: Operational
+          </span>
+        </div>
+      </div>
+
+      {/* ── RIGHT PANEL: LIGHT LOGIN FORM ── */}
+      <div className="lg:w-1/2 bg-white p-8 sm:p-12 lg:p-16 flex flex-col justify-between items-center relative">
+        <div className="w-full max-w-md my-auto">
+
+          {/* Navigation link back to site */}
+          <div className="mb-8 flex items-center justify-between">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#0055FE] transition-colors group"
+            >
+              <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+              Back to Marketplace
+            </Link>
+
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0055FE] hover:underline"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Request Access
+            </Link>
+          </div>
+
+          {/* Form Header */}
+          <div className="mb-8">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0055FE] mb-4">
+              <Lock className="w-6 h-6" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Sign In to Portal
+            </h2>
+            <p className="text-sm text-slate-500 mt-1.5">
+              Enter your administrative credentials to continue.
+            </p>
+          </div>
+
+          {/* Error Banner */}
+          {error && (
+            <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 rounded-2xl p-4 mb-6 text-xs text-rose-700 animate-in fade-in slide-in-from-top-2 duration-200">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span className="font-medium">{error}</span>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            
+            {/* Email Field */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@carfever.com"
+                  required
+                  autoComplete="email"
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#0055FE] focus:ring-4 focus:ring-blue-500/10 transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  required
+                  autoComplete="current-password"
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#0055FE] focus:ring-4 focus:ring-blue-500/10 transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Remember & Forgot options */}
+            <div className="flex items-center justify-between text-xs pt-1">
+              <label className="flex items-center gap-2 cursor-pointer text-slate-600 font-medium select-none">
+                <input
+                  type="checkbox"
+                  defaultChecked
+                  className="w-4 h-4 rounded border-slate-300 text-[#0055FE] focus:ring-[#0055FE]"
+                />
+                Keep me logged in
+              </label>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 bg-[#0055FE] hover:bg-blue-700 text-white font-bold rounded-2xl text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Verifying Credentials…</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In to Dashboard</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+
+          </form>
+
+          {/* Bottom Switcher */}
+          <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+            <p className="text-xs text-slate-500">
+              Need staff or manager registration?{" "}
+              <Link href="/register" className="font-bold text-[#0055FE] hover:underline">
+                Submit a Request
+              </Link>
+            </p>
+          </div>
+
+        </div>
+
+        {/* Version Footer */}
+        <div className="mt-8 text-center text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+          CarFever Platform v2.0 • Secured Console
+        </div>
+      </div>
+
+    </div>
+  );
+}
