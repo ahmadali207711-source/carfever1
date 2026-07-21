@@ -165,7 +165,7 @@ export async function submitCarListing(formData: {
   sellerName: string;
   sellerPhone: string;
   description: string;
-  images: File[];
+  images?: string[];
 }) {
   const ip = await getClientIp();
   const { allowed } = rateLimit('car-listing', ip);
@@ -175,79 +175,59 @@ export async function submitCarListing(formData: {
 
   try {
     const parsed = CarListingSchema.parse(formData);
-
     const supabase = createServiceRoleClient();
-
-    try {
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const exists = buckets?.some((b: any) => b.name === 'car-images');
-      if (!exists) {
-        await supabase.storage.createBucket('car-images', {
-          public: true,
-          fileSizeLimit: 10485760,
-        });
-      }
-    } catch {}
-
-    const imageUrls: string[] = [];
-    for (const file of parsed.images) {
-      const isWebP = file.type === 'image/webp' || file.name.endsWith('.webp');
-      const ext = isWebP ? 'webp' : (file.name.split('.').pop() || 'jpg');
-      const contentType = isWebP ? 'image/webp' : (file.type || 'image/jpeg');
-      const path = `listings/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('car-images')
-        .upload(path, file, { contentType, upsert: false });
-
-      if (uploadError) {
-        console.error('Image upload error:', uploadError.message);
-        continue;
-      }
-
-      const { data: urlData } = supabase.storage
-        .from('car-images')
-        .getPublicUrl(path);
-
-      imageUrls.push(urlData.publicUrl);
-    }
 
     const priceLacs = parseFloat(parsed.price);
     const pricePKR = Math.round(priceLacs * 100000);
     const title = `${parsed.year} ${parsed.make} ${parsed.model}`;
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString().slice(-6);
 
-    const { data, error } = await supabase
+    const imageUrls = parsed.images && parsed.images.length > 0
+      ? parsed.images
+      : ['https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=600&q=80'];
+
+    const insertPayload: any = {
+      title,
+      slug,
+      make: parsed.make,
+      brand: parsed.make,
+      model: parsed.model,
+      year: parseInt(parsed.year),
+      price: pricePKR,
+      currency: 'PKR',
+      mileage: parsed.mileage ? parseInt(parsed.mileage) : null,
+      transmission: parsed.transmission.charAt(0).toUpperCase() + parsed.transmission.slice(1),
+      fuel_type: parsed.fuelType.charAt(0).toUpperCase() + parsed.fuelType.slice(1),
+      city: parsed.city,
+      description: parsed.description || `${title} for sale.`,
+      images: imageUrls,
+      image_url: imageUrls[0],
+      features: [],
+      status: 'pending',
+      seller_name: parsed.sellerName || null,
+      seller_phone: parsed.sellerPhone || null,
+    };
+
+    let { data, error } = await supabase
       .from('cars')
-      .insert({
-        title,
-        slug,
-        brand: parsed.make,
-        model: parsed.model,
-        year: parseInt(parsed.year),
-        price: pricePKR,
-        currency: 'PKR',
-        mileage: parsed.mileage ? parseInt(parsed.mileage) : null,
-        transmission: parsed.transmission.charAt(0).toUpperCase() + parsed.transmission.slice(1),
-        fuel_type: parsed.fuelType.charAt(0).toUpperCase() + parsed.fuelType.slice(1),
-        city: parsed.city,
-        description: parsed.description || `${title} for sale.`,
-        images: imageUrls.length > 0 ? imageUrls : ['https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=600&q=80'],
-        features: [],
-        status: 'pending',
-        seller_name: parsed.sellerName || null,
-        seller_phone: parsed.sellerPhone || null,
-      } as any)
+      .insert(insertPayload)
       .select('id')
       .single();
+
+    if (error && error.message.includes('brand')) {
+      delete insertPayload.brand;
+      const retry = await supabase.from('cars').insert(insertPayload).select('id').single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) throw new Error(error.message);
 
     revalidatePath('/admin/cars');
     revalidatePath('/buy-car');
 
-    return { success: true, carId: data.id };
-  } catch (err) {
+    return { success: true, carId: data?.id || '' };
+  } catch (err: any) {
     console.error('submitCarListing error:', err);
     return {
       success: false,

@@ -30,6 +30,7 @@ import {
   FileText,
 } from "lucide-react";
 import { submitCarListing } from "@/lib/server-actions";
+import { uploadImage } from "@/lib/admin-actions";
 import { convertMultipleToWebP } from "@/lib/image-utils";
 
 const POPULAR_BRANDS = [
@@ -241,6 +242,21 @@ export default function SellCarPage() {
       const finalModel = getEffectiveModel();
       const finalCity = getEffectiveCity();
 
+      // Convert images to WebP and upload to Supabase Storage
+      let imageUrls: string[] = [];
+      if (uploadedFiles.length > 0) {
+        showToast("Converting images to WebP & uploading to storage...");
+        const webpFiles = await convertMultipleToWebP(uploadedFiles);
+        for (const file of webpFiles) {
+          try {
+            const url = await uploadImage(file);
+            if (url) imageUrls.push(url);
+          } catch (uploadErr) {
+            console.error("Individual image upload failed:", uploadErr);
+          }
+        }
+      }
+
       const result = await submitCarListing({
         make: finalMake,
         model: finalModel,
@@ -254,7 +270,7 @@ export default function SellCarPage() {
         sellerName: formData.sellerName,
         sellerPhone: formData.sellerPhone,
         description: formData.description + (formData.features.length > 0 ? `\nFeatures: ${formData.features.join(", ")}` : ""),
-        images: uploadedFiles,
+        images: imageUrls,
       });
 
       if (result.success) {

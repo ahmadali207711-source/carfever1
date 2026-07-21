@@ -113,7 +113,7 @@ export async function createCar(input: CarInsert) {
 }
 
 export async function updateCar(id: string, input: CarUpdate) {
-  await verifyContentManagerAccess();
+  await verifyAdminSession();
 
   const supabase = createServiceRoleClient();
   const payload: any = { ...input };
