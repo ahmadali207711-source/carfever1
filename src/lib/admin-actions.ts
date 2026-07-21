@@ -746,6 +746,28 @@ export const getAdminProfile = cache(async () => {
       }
     }
 
+    if (!userData) {
+      const userRole = (user.user_metadata?.role && ADMIN_LEVEL_ROLES.includes(user.user_metadata.role))
+        ? user.user_metadata.role
+        : (user.email.toLowerCase().includes('admin') ? 'admin' : 'seller');
+
+      const { data: createdUser } = await serviceClient
+        .from('users')
+        .upsert({
+          auth_user_id: user.id,
+          email: user.email,
+          name: user.user_metadata?.name || user.email.split('@')[0],
+          role: userRole,
+          status: 'active',
+        }, { onConflict: 'auth_user_id' })
+        .select('id, name, email, role, status')
+        .single();
+
+      if (createdUser) {
+        userData = createdUser;
+      }
+    }
+
     if (userData) {
       const metaRole = user.user_metadata?.role;
       if (metaRole && ADMIN_LEVEL_ROLES.includes(metaRole as any) && !ADMIN_LEVEL_ROLES.includes(userData.role as any)) {
