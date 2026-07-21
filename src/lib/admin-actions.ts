@@ -9,6 +9,8 @@ import { CarCreateSchema, BlogCreateSchema, AdminLoginSchema } from './validatio
 import { rateLimit } from './rate-limit';
 import { headers } from 'next/headers';
 
+import { getSession } from './auth';
+
 type CarInsert = Database['public']['Tables']['cars']['Insert'];
 type CarUpdate = Partial<Database['public']['Tables']['cars']['Insert']>;
 
@@ -32,35 +34,33 @@ async function getClientIp(): Promise<string> {
 
 const ADMIN_LEVEL_ROLES = ['admin', 'content_manager', 'inspection_manager'] as const;
 
-async function verifyRoleAccess(allowedRoles: string[]): Promise<{ role: string; id: string }> {
-  const supabase = await createServerClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) throw new Error('Authentication required');
+export const verifyAdminSession = cache(async (): Promise<{ role: string; id: string }> => {
+  const sessionUser = await getSession();
+  if (!sessionUser) throw new Error('Authentication required');
 
-  const serviceClient = createServiceRoleClient();
-  const { data: dbUser } = await serviceClient
-    .from('users')
-    .select('id, role')
-    .eq('auth_user_id', user.id)
-    .maybeSingle();
-
-  if (!dbUser || !allowedRoles.includes(dbUser.role)) {
+  if (!ADMIN_LEVEL_ROLES.includes(sessionUser.role as any)) {
     throw new Error('Access denied. Insufficient permissions.');
   }
-  return { role: dbUser.role, id: dbUser.id };
-}
+  return { role: sessionUser.role, id: sessionUser.id };
+});
 
-export async function verifyAdminSession(): Promise<{ role: string; id: string }> {
-  return verifyRoleAccess(Array.from(ADMIN_LEVEL_ROLES));
-}
+export const verifyContentManagerAccess = cache(async (): Promise<void> => {
+  const sessionUser = await getSession();
+  if (!sessionUser) throw new Error('Authentication required');
 
-async function verifyContentManagerAccess(): Promise<void> {
-  await verifyRoleAccess(['admin', 'content_manager']);
-}
+  if (!['admin', 'content_manager'].includes(sessionUser.role)) {
+    throw new Error('Access denied. Insufficient permissions.');
+  }
+});
 
-async function verifyInspectionManagerAccess(): Promise<void> {
-  await verifyRoleAccess(['admin', 'inspection_manager']);
-}
+export const verifyInspectionManagerAccess = cache(async (): Promise<void> => {
+  const sessionUser = await getSession();
+  if (!sessionUser) throw new Error('Authentication required');
+
+  if (!['admin', 'inspection_manager'].includes(sessionUser.role)) {
+    throw new Error('Access denied. Insufficient permissions.');
+  }
+});
 
 function RATE_LIMIT_ADMIN(action: 'login' | 'admin-action', ip: string) {
   return rateLimit(action === 'login' ? 'login' : 'api', ip);
