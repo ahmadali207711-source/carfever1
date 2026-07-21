@@ -60,7 +60,12 @@ export default function ProfileSettingsPage() {
     }
     setSaving(true);
     try {
-      await updateProfile({ name, phone: phone || undefined, bio: bio || undefined });
+      await updateProfile({
+        name,
+        email: newEmail.trim() || undefined,
+        phone: phone || undefined,
+        bio: bio || undefined,
+      });
       toast.success("Profile information updated successfully");
       loadProfileData();
     } catch (err: any) {
@@ -237,18 +242,20 @@ export default function ProfileSettingsPage() {
           </div>
 
           <div>
-            <label className={labelClass}>Primary Email (Read-Only)</label>
+            <label className={labelClass}>Primary Email Address</label>
             <div className="relative">
               <Mail className="absolute left-4 top-3.5 w-4 h-4 text-slate-400" />
               <input
                 type="email"
-                value={profile?.auth_email || profile?.email || ""}
-                disabled
-                className="w-full pl-11 pr-4 py-3 bg-slate-100/80 border border-slate-200 rounded-xl text-slate-500 text-xs font-semibold cursor-not-allowed"
+                value={newEmail}
+                onChange={e => setNewEmail(e.target.value)}
+                placeholder="name@example.com"
+                required
+                className={inputClass}
               />
             </div>
             <p className="text-[11px] text-slate-400 font-medium mt-1.5">
-              To update your primary email address, switch to the "Email Address" tab.
+              Enter your preferred primary email address for notifications and account updates.
             </p>
           </div>
 

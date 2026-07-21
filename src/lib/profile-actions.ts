@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 
 const UpdateProfileSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
+  email: z.string().email('Invalid email').optional(),
   phone: z.string().optional(),
   bio: z.string().max(500).optional(),
 });
@@ -77,6 +78,7 @@ export async function getProfile(): Promise<ProfileData> {
 
 export async function updateProfile(input: {
   name: string;
+  email?: string;
   phone?: string;
   bio?: string;
 }) {
@@ -93,12 +95,16 @@ export async function updateProfile(input: {
   const authUserId = sessionUser?.auth_user_id || user?.id;
   const targetEmail = sessionUser?.email || user?.email;
 
-  const payload = {
+  const payload: any = {
     name: parsed.name,
     phone: parsed.phone || null,
     bio: parsed.bio || null,
     updated_at: new Date().toISOString(),
   };
+
+  if (parsed.email && parsed.email.trim() !== '') {
+    payload.email = parsed.email.trim();
+  }
 
   if (targetId) {
     const { error } = await serviceClient.from('users').update(payload).eq('id', targetId);

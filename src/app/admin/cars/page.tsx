@@ -350,7 +350,7 @@ export default function AdminCarsPage() {
 
                           {/* Edit Listing Button */}
                           <Link
-                            href={`${newCarUrl}?id=${car.id}`}
+                            href={isSeller ? `/seller/cars/${car.id}` : `/admin/cars/${car.id}`}
                             prefetch={false}
                             title="Edit Listing Details & Photos"
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-[#0055FE] text-xs font-bold transition-all shadow-xs hover:border-blue-300"

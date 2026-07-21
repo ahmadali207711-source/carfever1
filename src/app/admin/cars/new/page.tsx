@@ -51,9 +51,9 @@ export default function EditCarPage() {
 
   useEffect(() => {
     if (id) {
-      fetchCar();
+      router.replace(isSeller ? `/seller/cars/${id}` : `/admin/cars/${id}`);
     }
-  }, [id]);
+  }, [id, isSeller, router]);
 
   async function fetchCar() {
     try {
