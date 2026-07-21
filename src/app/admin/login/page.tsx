@@ -59,7 +59,12 @@ export default function AdminLoginPage() {
         const supabase = createClient();
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          router.replace("/admin/dashboard");
+          const metaRole = session.user?.user_metadata?.role;
+          if (metaRole === "buyer") {
+            router.replace("/");
+          } else {
+            router.replace("/admin/dashboard");
+          }
           return;
         }
       } catch {
@@ -80,7 +85,11 @@ export default function AdminLoginPage() {
       const result = await loginAdmin(email.trim(), password);
 
       if (result.success && result.user) {
-        router.replace("/admin/dashboard");
+        if (result.user.role === "buyer") {
+          router.replace("/");
+        } else {
+          router.replace("/admin/dashboard");
+        }
       }
     } catch (err: any) {
       const msg = err?.message || "";
