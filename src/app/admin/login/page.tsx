@@ -36,12 +36,22 @@ export default function AdminLoginPage() {
       const errParam = params.get("error");
       if (errParam === "rate_limited") {
         setError("Too many requests. Please wait a moment before trying again.");
-      } else if (errParam === "unauthorized") {
+      } else if (errParam === "unauthorized" || errParam === "admin_only") {
         setError("Please sign in with an admin account to access the portal.");
+      } else if (errParam === "suspended") {
+        setError("Your account has been suspended. Please contact the administrator for assistance.");
       }
     }
 
     async function checkSession() {
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("error") === "suspended") {
+          setChecking(false);
+          return;
+        }
+      }
+
       try {
         const supabase = createClient();
         const { data: { session } } = await supabase.auth.getSession();

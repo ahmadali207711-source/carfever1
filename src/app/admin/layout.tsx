@@ -44,9 +44,7 @@ const menuItems: MenuItem[] = [
   { label: "Registrations",     href: "/admin/registrations",icon: UserPlus,        roles: ["admin"] },
   { label: "Manage Users",      href: "/admin/users",        icon: Users,           roles: ["admin"] },
   { label: "Dealers",           href: "/admin/dealers",      icon: Building2,       roles: ["admin"] },
-  { label: "SEO Settings",      href: "/admin/seo",          icon: SearchIcon,      roles: ["admin"] },
   { label: "Site Settings",     href: "/admin/settings",     icon: Settings,        roles: ["admin"] },
-  { label: "Analytics",         href: "/admin/analytics",    icon: BarChart3,       roles: ["admin"] },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
@@ -84,11 +82,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           return;
         }
 
+        if (res.suspended || (res.profile as any).isSuspended || res.profile.status === 'suspended') {
+          await logoutAdmin();
+          router.push("/admin/login?error=suspended");
+          return;
+        }
+
         setAdminUser(res.profile);
         setIsAuthenticated(true);
         setNewRegistrationsCount(res.pendingRegistrations);
-      } catch {
-        router.push("/admin/login");
+      } catch (err: any) {
+        if (err?.message?.includes("suspended")) {
+          await logoutAdmin();
+          router.push("/admin/login?error=suspended");
+        } else {
+          router.push("/admin/login");
+        }
       }
     }
 

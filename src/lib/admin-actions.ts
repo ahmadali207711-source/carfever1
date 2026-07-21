@@ -38,8 +38,12 @@ export const verifyAdminSession = cache(async (): Promise<{ role: string; id: st
   const sessionUser = await getSession();
   if (!sessionUser) throw new Error('Authentication required');
 
+  if (sessionUser.status === 'suspended') {
+    throw new Error('Your account has been suspended. Please contact the administrator.');
+  }
+
   if (!ADMIN_LEVEL_ROLES.includes(sessionUser.role as any)) {
-    throw new Error('Access denied. Insufficient permissions.');
+    throw new Error('Access denied. Admin or manager role required.');
   }
   return { role: sessionUser.role, id: sessionUser.id };
 });
@@ -47,6 +51,10 @@ export const verifyAdminSession = cache(async (): Promise<{ role: string; id: st
 export const verifyContentManagerAccess = cache(async (): Promise<void> => {
   const sessionUser = await getSession();
   if (!sessionUser) throw new Error('Authentication required');
+
+  if (sessionUser.status === 'suspended') {
+    throw new Error('Your account has been suspended. Please contact the administrator.');
+  }
 
   if (!['admin', 'content_manager'].includes(sessionUser.role)) {
     throw new Error('Access denied. Insufficient permissions.');
@@ -56,6 +64,10 @@ export const verifyContentManagerAccess = cache(async (): Promise<void> => {
 export const verifyInspectionManagerAccess = cache(async (): Promise<void> => {
   const sessionUser = await getSession();
   if (!sessionUser) throw new Error('Authentication required');
+
+  if (sessionUser.status === 'suspended') {
+    throw new Error('Your account has been suspended. Please contact the administrator.');
+  }
 
   if (!['admin', 'inspection_manager'].includes(sessionUser.role)) {
     throw new Error('Access denied. Insufficient permissions.');
@@ -474,7 +486,7 @@ export async function loginAdmin(email: string, password: string) {
   const serviceClient = createServiceRoleClient();
   let { data: userData } = await serviceClient
     .from('users')
-    .select('id, name, email, role')
+    .select('id, name, email, role, status')
     .eq('auth_user_id', authData.user.id)
     .maybeSingle();
 
@@ -489,7 +501,7 @@ export async function loginAdmin(email: string, password: string) {
         role: 'admin',
         status: 'active'
       }, { onConflict: 'auth_user_id' })
-      .select('id, name, email, role')
+      .select('id, name, email, role, status')
       .single();
 
     if (newAdmin) {
@@ -501,7 +513,13 @@ export async function loginAdmin(email: string, password: string) {
     throw new Error('Admin account profile could not be retrieved.');
   }
 
+  if (userData.status === 'suspended') {
+    await supabase.auth.signOut();
+    throw new Error('Your account has been suspended. Please contact the administrator.');
+  }
+
   if (!ADMIN_LEVEL_ROLES.includes(userData.role as any)) {
+    await supabase.auth.signOut();
     throw new Error('Access denied. Admin or manager role required.');
   }
 
@@ -586,12 +604,17 @@ export const getAdminProfile = cache(async () => {
     const serviceClient = createServiceRoleClient();
     const { data: userData } = await serviceClient
       .from('users')
-      .select('id, name, email, role')
+      .select('id, name, email, role, status')
       .eq('auth_user_id', user.id)
       .maybeSingle();
 
-    if (userData && ADMIN_LEVEL_ROLES.includes(userData.role as any)) {
-      return userData;
+    if (userData) {
+      if (userData.status === 'suspended') {
+        return { ...userData, isSuspended: true };
+      }
+      if (ADMIN_LEVEL_ROLES.includes(userData.role as any)) {
+        return userData;
+      }
     }
 
     return null;
@@ -605,6 +628,14 @@ export async function getAdminInitialData() {
   const profile = await getAdminProfile();
   if (!profile) return null;
 
+  if ((profile as any).isSuspended || (profile as any).status === 'suspended') {
+    return {
+      profile,
+      pendingRegistrations: 0,
+      suspended: true,
+    };
+  }
+
   const serviceClient = createServiceRoleClient();
   const { count } = await serviceClient
     .from('registration_requests')
@@ -614,6 +645,7 @@ export async function getAdminInitialData() {
   return {
     profile,
     pendingRegistrations: count ?? 0,
+    suspended: false,
   };
 }
 
