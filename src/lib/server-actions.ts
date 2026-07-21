@@ -214,24 +214,25 @@ export async function submitCarListing(formData: {
       .select('id')
       .single();
 
-    if (error) {
-      console.warn('Initial insert error:', error.message);
-      // If error is about brand vs make column mismatch
-      if (error.message.includes('brand')) {
+    let retries = 0;
+    while (error && retries < 10) {
+      retries++;
+      console.warn(`Insert error (attempt ${retries}):`, error.message);
+
+      const match =
+        error.message.match(/Could not find the '([^']+)' column/i) ||
+        error.message.match(/column "(.*?)"/i) ||
+        error.message.match(/column '(.*?)'/i);
+
+      if (match && match[1] && match[1] in insertPayload) {
+        console.warn(`Stripping missing column '${match[1]}' and retrying...`);
+        delete insertPayload[match[1]];
+      } else if (error.message.includes('brand')) {
         delete insertPayload.brand;
-      }
-      if (error.message.includes('make')) {
+      } else if (error.message.includes('make')) {
         delete insertPayload.make;
-      }
-      // If error is about missing seller_name or seller_phone
-      if (error.message.includes('seller_name')) {
-        delete insertPayload.seller_name;
-      }
-      if (error.message.includes('seller_phone')) {
-        delete insertPayload.seller_phone;
-      }
-      if (error.message.includes('image_url')) {
-        delete insertPayload.image_url;
+      } else {
+        break;
       }
 
       const retry = await supabase.from('cars').insert(insertPayload).select('id').single();
