@@ -1,10 +1,18 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Check, X, Eye, Search, Clock, Copy, CheckCircle2, Loader2 } from "lucide-react";
+import { Check, X, Eye, Search, Clock, Copy, CheckCircle2, Loader2, Trash2, Key, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { approveRegistrationRequest, rejectRegistrationRequest, fetchRegistrationRequests } from "@/lib/registration-actions";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  approveRegistrationRequest,
+  rejectRegistrationRequest,
+  deleteRegistrationRequest,
+  fetchRegistrationRequests,
+} from "@/lib/registration-actions";
 import type { DbRegistrationRequest } from "@/lib/supabase/types";
 import { toast } from "sonner";
 
@@ -26,6 +34,15 @@ function formatRoleLabel(roleStr: string) {
   }
 }
 
+function generateRandomPassword() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*";
+  let pass = "";
+  for (let i = 0; i < 10; i++) {
+    pass += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pass + "1!";
+}
+
 type FilterTab = "all" | "pending" | "approved" | "rejected";
 
 export default function RegistrationsPage() {
@@ -33,8 +50,19 @@ export default function RegistrationsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterTab>("pending");
   const [search, setSearch] = useState("");
+  
+  // Modals
   const [selected, setSelected] = useState<DbRegistrationRequest | null>(null);
+  const [approveModalRequest, setApproveModalRequest] = useState<DbRegistrationRequest | null>(null);
+  const [deleteModalRequest, setDeleteModalRequest] = useState<DbRegistrationRequest | null>(null);
+
+  // Approval Form State
+  const [passwordInput, setPasswordInput] = useState("");
+  const [showPassword, setShowPassword] = useState(true);
+  const [adminNotesInput, setAdminNotesInput] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Success Result State
   const [approvalResult, setApprovalResult] = useState<{ email: string; tempPassword: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -57,15 +85,33 @@ export default function RegistrationsPage() {
     !search || r.name.toLowerCase().includes(search.toLowerCase()) || r.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleApprove = async (id: string) => {
+  const openApproveModal = (req: DbRegistrationRequest) => {
+    setApproveModalRequest(req);
+    setPasswordInput(generateRandomPassword());
+    setAdminNotesInput("");
+    setSelected(null);
+  };
+
+  const handleConfirmApproval = async () => {
+    if (!approveModalRequest) return;
+    if (!passwordInput || passwordInput.trim().length < 6) {
+      toast.error("Password must be at least 6 characters long");
+      return;
+    }
+
     setActionLoading(true);
     try {
-      const result = await approveRegistrationRequest(id);
+      const result = await approveRegistrationRequest(
+        approveModalRequest.id,
+        passwordInput.trim(),
+        adminNotesInput.trim() || undefined
+      );
       setApprovalResult({ email: result.email, tempPassword: result.tempPassword });
-      setSelected(null);
+      setApproveModalRequest(null);
       loadRequests();
+      toast.success("Account approved and credentials generated!");
     } catch (err: any) {
-      toast.error(err.message || "Failed to approve");
+      toast.error(err.message || "Failed to approve registration");
     } finally {
       setActionLoading(false);
     }
@@ -75,11 +121,27 @@ export default function RegistrationsPage() {
     setActionLoading(true);
     try {
       await rejectRegistrationRequest(id);
-      toast.success("Request rejected");
+      toast.success("Registration request rejected");
       setSelected(null);
       loadRequests();
     } catch (err: any) {
-      toast.error(err.message || "Failed to reject");
+      toast.error(err.message || "Failed to reject request");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteModalRequest) return;
+    setActionLoading(true);
+    try {
+      await deleteRegistrationRequest(deleteModalRequest.id);
+      toast.success("Registration request deleted permanently");
+      setDeleteModalRequest(null);
+      setSelected(null);
+      loadRequests();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete request");
     } finally {
       setActionLoading(false);
     }
@@ -92,7 +154,7 @@ export default function RegistrationsPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Failed to copy");
+      toast.error("Failed to copy password");
     }
   };
 
@@ -117,7 +179,7 @@ export default function RegistrationsPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Registration Requests</h1>
-        <p className="text-xs font-semibold text-slate-500 mt-1">Review and approve user registration requests.</p>
+        <p className="text-xs font-semibold text-slate-500 mt-1">Review user registration requests and set default portal access passwords.</p>
       </div>
 
       {/* Filters & Search */}
@@ -217,10 +279,10 @@ export default function RegistrationsPage() {
                       {req.status === "pending" && (
                         <>
                           <button
-                            onClick={() => handleApprove(req.id)}
+                            onClick={() => openApproveModal(req)}
                             disabled={actionLoading}
                             className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors cursor-pointer disabled:opacity-50"
-                            title="Approve"
+                            title="Approve & Set Password"
                           >
                             <Check className="w-3.5 h-3.5" />
                           </button>
@@ -234,6 +296,14 @@ export default function RegistrationsPage() {
                           </button>
                         </>
                       )}
+                      <button
+                        onClick={() => setDeleteModalRequest(req)}
+                        disabled={actionLoading}
+                        className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors cursor-pointer disabled:opacity-50"
+                        title="Delete Request"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -243,13 +313,13 @@ export default function RegistrationsPage() {
         </div>
       </div>
 
-      {/* Detail Modal */}
+      {/* Details View Modal */}
       {selected && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setSelected(null)} />
           <div className="relative w-full max-w-lg bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-base font-bold text-slate-900">Request Details</h3>
+              <h3 className="text-base font-extrabold text-slate-900">Registration Request Details</h3>
               <button onClick={() => setSelected(null)} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100">
                 <X className="w-4 h-4" />
               </button>
@@ -263,6 +333,7 @@ export default function RegistrationsPage() {
                 <div>
                   <div className="text-slate-900 font-bold text-sm">{selected.name}</div>
                   <div className="text-slate-500 text-xs font-semibold">{selected.email}</div>
+                  {selected.phone && <div className="text-slate-400 text-xs">{selected.phone}</div>}
                 </div>
                 <span className={`ml-auto px-2.5 py-0.5 rounded-full text-xs font-bold border ${badgeColor(selected.status)}`}>
                   {selected.status.charAt(0).toUpperCase() + selected.status.slice(1)}
@@ -275,56 +346,193 @@ export default function RegistrationsPage() {
                   <div className="text-slate-900 font-bold text-xs">{formatRoleLabel(extractRequestedRole(selected))}</div>
                 </div>
                 <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Submitted</div>
-                  <div className="text-slate-900 font-bold text-xs">{new Date(selected.created_at).toLocaleDateString()}</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Submitted Date</div>
+                  <div className="text-slate-900 font-bold text-xs">{new Date(selected.created_at).toLocaleString()}</div>
                 </div>
               </div>
 
               {selected.message && (
                 <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Message</div>
-                  <div className="text-slate-700 text-xs font-medium">{selected.message}</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Applicant Message / Reason</div>
+                  <div className="text-slate-700 text-xs font-medium whitespace-pre-wrap">{selected.message}</div>
                 </div>
               )}
             </div>
 
-            {selected.status === "pending" && (
-              <div className="flex gap-3 mt-6">
-                <Button
-                  onClick={() => handleApprove(selected.id)}
-                  disabled={actionLoading}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-10 rounded-xl cursor-pointer"
-                >
-                  <CheckCircle2 className="w-4 h-4 mr-1.5" /> Approve Account
-                </Button>
-                <Button
-                  onClick={() => handleReject(selected.id)}
-                  disabled={actionLoading}
-                  variant="outline"
-                  className="flex-1 border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs h-10 rounded-xl cursor-pointer"
-                >
-                  <X className="w-4 h-4 mr-1.5" /> Reject
-                </Button>
-              </div>
-            )}
+            <div className="flex gap-3 mt-6">
+              {selected.status === "pending" && (
+                <>
+                  <Button
+                    onClick={() => openApproveModal(selected)}
+                    disabled={actionLoading}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-10 rounded-xl cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4 mr-1.5" /> Approve & Set Password
+                  </Button>
+                  <Button
+                    onClick={() => handleReject(selected.id)}
+                    disabled={actionLoading}
+                    variant="outline"
+                    className="border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs h-10 rounded-xl cursor-pointer"
+                  >
+                    <X className="w-4 h-4 mr-1.5" /> Reject
+                  </Button>
+                </>
+              )}
+              <Button
+                onClick={() => { setDeleteModalRequest(selected); setSelected(null); }}
+                variant="outline"
+                className="border-slate-200 text-rose-600 hover:bg-rose-50 font-bold text-xs h-10 rounded-xl cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4 mr-1.5" /> Delete
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Approval Result Modal */}
-      {approvalResult && (
+      {/* Approval & Password Setup Modal */}
+      {approveModalRequest && (
+        <div className="fixed inset-0 z-[85] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setApproveModalRequest(null)} />
+          <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Approve Registration</h3>
+                <p className="text-xs font-semibold text-slate-500 mt-0.5">Set portal login credentials for applicant.</p>
+              </div>
+              <button onClick={() => setApproveModalRequest(null)} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl space-y-1">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-slate-900">{approveModalRequest.name}</span>
+                  <Badge className="bg-blue-100 text-[#0055FE] border-blue-200 text-[10px] font-bold uppercase">
+                    {formatRoleLabel(extractRequestedRole(approveModalRequest))}
+                  </Badge>
+                </div>
+                <div className="text-[11px] font-semibold text-slate-600">{approveModalRequest.email}</div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="passwordInput" className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <Key className="w-3.5 h-3.5 text-[#0055FE]" />
+                    Set Default Login Password <span className="text-rose-500">*</span>
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => setPasswordInput(generateRandomPassword())}
+                    className="text-[11px] font-bold text-[#0055FE] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3 h-3" /> Auto-Generate
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <Input
+                    id="passwordInput"
+                    type={showPassword ? "text" : "password"}
+                    value={passwordInput}
+                    onChange={e => setPasswordInput(e.target.value)}
+                    className="bg-slate-50/50 border-slate-200 rounded-xl text-xs font-mono font-bold pr-10 focus:bg-white focus:border-[#0055FE]"
+                    placeholder="Enter default login password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                  >
+                    {showPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+                <p className="text-[10px] font-medium text-slate-400">Admin can share this default password with the user for their initial login.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="adminNotesInput" className="text-xs font-bold text-slate-700">Admin Notes (Optional)</Label>
+                <Textarea
+                  id="adminNotesInput"
+                  rows={2}
+                  value={adminNotesInput}
+                  onChange={e => setAdminNotesInput(e.target.value)}
+                  className="bg-slate-50/50 border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:border-[#0055FE]"
+                  placeholder="Optional notes regarding approval..."
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setApproveModalRequest(null)}
+                className="flex-1 border-slate-200 text-slate-600 font-bold text-xs h-10 rounded-xl cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmApproval}
+                disabled={actionLoading}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-10 rounded-xl shadow-xs cursor-pointer"
+              >
+                {actionLoading ? "Approving..." : "Confirm & Create User"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalRequest && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setDeleteModalRequest(null)} />
+          <div className="relative w-full max-w-sm bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl text-center">
+            <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-extrabold text-slate-900 mb-1">Delete Registration Request?</h3>
+            <p className="text-xs font-medium text-slate-500 mb-6">
+              Are you sure you want to permanently delete registration request for <span className="font-bold text-slate-900">&ldquo;{deleteModalRequest.name}&rdquo;</span> ({deleteModalRequest.email})? This action cannot be undone.
+            </p>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteModalRequest(null)}
+                className="flex-1 border-slate-200 text-slate-600 font-bold text-xs h-10 rounded-xl cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDelete}
+                disabled={actionLoading}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs h-10 rounded-xl cursor-pointer shadow-xs"
+              >
+                {actionLoading ? "Deleting..." : "Delete Permanently"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approval Credentials Result Modal */}
+      {approvalResult && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setApprovalResult(null)} />
           <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl text-center">
             <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-extrabold text-slate-900 mb-1">Account Created!</h3>
+            <h3 className="text-base font-extrabold text-slate-900 mb-1">Account Created & Approved!</h3>
             <p className="text-xs font-semibold text-slate-500 mb-4">
-              User <span className="text-slate-900 font-bold">{approvalResult.email}</span> approved. Share temp password:
+              Portal account created for <span className="text-slate-900 font-bold">{approvalResult.email}</span>. Share these login credentials:
             </p>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-4">
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-4 space-y-2 text-left">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Default Login Password</div>
               <div className="flex items-center gap-2">
                 <code className="flex-1 bg-white text-emerald-700 font-mono text-xs px-3 py-2 rounded-lg border border-slate-200 font-bold select-all">
                   {approvalResult.tempPassword}
@@ -341,7 +549,7 @@ export default function RegistrationsPage() {
 
             <Button
               onClick={() => setApprovalResult(null)}
-              className="w-full bg-[#0055FE] hover:bg-blue-700 text-white font-bold text-xs h-10 rounded-xl cursor-pointer"
+              className="w-full bg-[#0055FE] hover:bg-blue-700 text-white font-bold text-xs h-10 rounded-xl cursor-pointer shadow-xs"
             >
               Done
             </Button>

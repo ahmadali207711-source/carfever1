@@ -191,68 +191,75 @@ export async function checkRegistrationStatus(emailInput: string) {
 
 export async function approveRegistrationRequest(
   requestId: string,
+  customPassword?: string,
   adminNotes?: string,
 ) {
-  const supabase = await createServerClient();
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) throw new Error('Authentication required');
-
-  const { data: adminUser } = await supabase
-    .from('users')
-    .select('id, role')
-    .eq('auth_user_id', user.id)
-    .single();
-
-  if (!adminUser || adminUser.role !== 'admin') {
-    throw new Error('Admin access required');
-  }
-
+  await verifyAdminSession();
   const serviceClient = createServiceRoleClient();
 
   const { data: request, error: fetchError } = await serviceClient
     .from('registration_requests')
     .select('*')
     .eq('id', requestId)
-    .eq('status', 'pending')
     .single();
 
   if (fetchError || !request) {
     throw new Error('Registration request not found or already processed');
   }
 
-  const tempPassword = crypto.randomUUID().slice(0, 12) + 'A1!';
+  const passwordToSet = customPassword && customPassword.trim().length >= 6
+    ? customPassword.trim()
+    : (crypto.randomUUID().slice(0, 10) + 'A1!');
 
-  const { data: authData, error: signUpError } = await supabase.auth.signUp({
+  const requestedRole = extractRequestedRole(request);
+
+  // 1. Create user in Supabase Auth via Service Role Admin API
+  let authUserId: string | null = null;
+  const { data: authData, error: signUpError } = await serviceClient.auth.admin.createUser({
     email: request.email,
-    password: tempPassword,
+    password: passwordToSet,
+    email_confirm: true,
+    user_metadata: { name: request.name, role: requestedRole }
   });
 
-  if (signUpError || !authData.user) {
-    throw new Error(`Failed to create user: ${signUpError?.message}`);
+  if (signUpError || !authData?.user) {
+    // If auth user already exists, find existing user & update password
+    const { data: listData } = await serviceClient.auth.admin.listUsers();
+    const existing = listData?.users?.find(u => u.email?.toLowerCase() === request.email.toLowerCase());
+    if (existing) {
+      authUserId = existing.id;
+      await serviceClient.auth.admin.updateUserById(authUserId, { password: passwordToSet });
+    } else {
+      throw new Error(`Failed to create auth user: ${signUpError?.message || 'Unknown error'}`);
+    }
+  } else {
+    authUserId = authData.user.id;
   }
+
+  // 2. Upsert profile in public.users table
+  const validRole = (['buyer', 'seller', 'content_manager', 'inspection_manager', 'admin'].includes(requestedRole) ? requestedRole : 'seller') as any;
 
   const { error: profileError } = await serviceClient
     .from('users')
-    .insert({
-      auth_user_id: authData.user.id,
+    .upsert({
+      auth_user_id: authUserId,
       name: request.name,
       email: request.email,
       phone: request.phone,
-      role: extractRequestedRole(request) as any,
+      role: validRole,
       status: 'active',
-    });
+    }, { onConflict: 'email' });
 
   if (profileError) {
-    throw new Error('Failed to create user profile');
+    console.error('[approveRegistrationRequest] profile upsert error:', profileError);
   }
 
+  // 3. Mark registration request as approved
   const { error: updateError } = await serviceClient
     .from('registration_requests')
     .update({
       status: 'approved',
       admin_notes: adminNotes || null,
-      reviewed_by: adminUser.id,
       reviewed_at: new Date().toISOString(),
     })
     .eq('id', requestId);
@@ -266,7 +273,7 @@ export async function approveRegistrationRequest(
 
   return {
     success: true as const,
-    tempPassword,
+    tempPassword: passwordToSet,
     email: request.email,
   };
 }
@@ -275,21 +282,7 @@ export async function rejectRegistrationRequest(
   requestId: string,
   adminNotes?: string,
 ) {
-  const supabase = await createServerClient();
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) throw new Error('Authentication required');
-
-  const { data: adminUser } = await supabase
-    .from('users')
-    .select('id, role')
-    .eq('auth_user_id', user.id)
-    .single();
-
-  if (!adminUser || adminUser.role !== 'admin') {
-    throw new Error('Admin access required');
-  }
-
+  await verifyAdminSession();
   const serviceClient = createServiceRoleClient();
 
   const { error: updateError } = await serviceClient
@@ -297,12 +290,26 @@ export async function rejectRegistrationRequest(
     .update({
       status: 'rejected',
       admin_notes: adminNotes || null,
-      reviewed_by: adminUser.id,
       reviewed_at: new Date().toISOString(),
     })
     .eq('id', requestId);
 
   if (updateError) throw new Error('Failed to reject request');
+
+  revalidatePath('/admin/registrations');
+  return { success: true as const };
+}
+
+export async function deleteRegistrationRequest(requestId: string) {
+  await verifyAdminSession();
+  const serviceClient = createServiceRoleClient();
+
+  const { error } = await serviceClient
+    .from('registration_requests')
+    .delete()
+    .eq('id', requestId);
+
+  if (error) throw new Error('Failed to delete registration request');
 
   revalidatePath('/admin/registrations');
   return { success: true as const };
