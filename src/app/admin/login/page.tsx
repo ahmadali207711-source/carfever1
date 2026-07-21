@@ -28,6 +28,9 @@ export default function AdminLoginPage() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
+    // Prefetch dashboard for instantaneous navigation upon login
+    router.prefetch("/admin/dashboard");
+
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const errParam = params.get("error");
@@ -44,6 +47,7 @@ export default function AdminLoginPage() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           router.replace("/admin/dashboard");
+          return;
         }
       } catch {
         // Continue to login page
@@ -57,6 +61,7 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    router.prefetch("/admin/dashboard");
 
     try {
       const result = await loginAdmin(email.trim(), password);
@@ -71,7 +76,6 @@ export default function AdminLoginPage() {
       } else {
         setError(msg || "Invalid email or password. Please try again.");
       }
-    } finally {
       setLoading(false);
     }
   };

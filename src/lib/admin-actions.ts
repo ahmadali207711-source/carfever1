@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createServiceRoleClient, createServerClient } from './supabase/server';
@@ -50,7 +51,7 @@ async function verifyRoleAccess(allowedRoles: string[]): Promise<{ role: string;
 }
 
 export async function verifyAdminSession(): Promise<{ role: string; id: string }> {
-  return verifyRoleAccess(['admin']);
+  return verifyRoleAccess(Array.from(ADMIN_LEVEL_ROLES));
 }
 
 async function verifyContentManagerAccess(): Promise<void> {
@@ -552,7 +553,7 @@ export async function signUpAdmin(email: string, password: string, name: string)
   return { success: true as const };
 }
 
-export async function getAdminProfile() {
+export const getAdminProfile = cache(async () => {
   try {
     const supabase = await createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -574,7 +575,7 @@ export async function getAdminProfile() {
     console.error('getAdminProfile error:', err);
     return null;
   }
-}
+});
 
 export async function getAdminInitialData() {
   const profile = await getAdminProfile();

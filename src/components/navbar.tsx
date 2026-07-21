@@ -191,21 +191,37 @@ export function Navbar() {
   const roleLinks = ROLE_BASED_LINKS[userRole] || [];
   const roleBadge = ROLE_BADGE[userRole];
 
+  const fetchedUserIdRef = useRef<string | null>(null);
+
+  const fetchDbUser = useCallback(async (authUser: User) => {
+    if (fetchedUserIdRef.current === authUser.id) return;
+    fetchedUserIdRef.current = authUser.id;
+    try {
+      const profile = await getCurrentUserProfileAction();
+      if (profile) {
+        setDbUser({ name: profile.name, email: profile.email, role: profile.role } as any);
+      }
+    } catch {
+      // User record may not exist yet
+    }
+  }, []);
+
   useEffect(() => {
     const supabase = createClient();
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: any) => {
       if (session?.user) {
         setSupabaseUser(session.user);
         fetchDbUser(session.user);
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       if (session?.user) {
         setSupabaseUser(session.user);
         fetchDbUser(session.user);
       } else {
+        fetchedUserIdRef.current = null;
         setSupabaseUser(null);
         setDbUser(null);
       }
@@ -219,18 +235,7 @@ export function Navbar() {
       subscription.unsubscribe();
       window.removeEventListener("wishlist-updated", handleWishlistUpdate);
     };
-  }, []);
-
-  async function fetchDbUser(authUser: User) {
-    try {
-      const profile = await getCurrentUserProfileAction();
-      if (profile) {
-        setDbUser({ name: profile.name, email: profile.email, role: profile.role } as any);
-      }
-    } catch {
-      // User record may not exist yet
-    }
-  }
+  }, [fetchDbUser]);
 
   const currentUserName = dbUser?.name || supabaseUser?.user_metadata?.name || supabaseUser?.email?.split("@")[0] || "User";
 

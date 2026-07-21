@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createServerClient, createServiceRoleClient } from './supabase/server';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
@@ -12,7 +13,7 @@ export type SessionUser = {
   status: string;
 };
 
-export async function getSession(): Promise<SessionUser | null> {
+export const getSession = cache(async (): Promise<SessionUser | null> => {
   try {
     const supabase = await createServerClient();
 
@@ -42,7 +43,7 @@ export async function getSession(): Promise<SessionUser | null> {
     console.error('getSession error:', err);
     return null;
   }
-}
+});
 
 export async function refreshSession(): Promise<boolean> {
   try {

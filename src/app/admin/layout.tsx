@@ -174,6 +174,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 onClick={() => {
                   if (isCarsItem || isInquiriesItem) clearCounts();
                 }}
@@ -199,6 +200,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="p-4 border-t border-slate-100 space-y-1">
           <Link
             href="/admin/settings/profile"
+            prefetch={false}
             className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-slate-600 hover:bg-slate-100/70 hover:text-slate-900 transition-all"
           >
             <UserCog className="w-4 h-4 text-slate-400" />
@@ -247,6 +249,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
                   onClick={() => {
                     setSidebarOpen(false);
                     if (isRegistrationsItem || isCarsItem || isInquiriesItem) clearCounts();
@@ -297,6 +300,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link
               href="/"
               target="_blank"
+              prefetch={false}
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
             >
               <Globe className="w-3.5 h-3.5 text-[#0055FE]" />
@@ -306,6 +310,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Quick Action: Add Car */}
             <Link
               href="/admin/cars"
+              prefetch={false}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#0055FE] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm shadow-blue-500/20"
             >
               <Plus className="w-4 h-4" />
@@ -315,6 +320,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Quick Action: New Blog */}
             <Link
               href="/admin/blogs"
+              prefetch={false}
               className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
             >
               <FileText className="w-3.5 h-3.5 text-emerald-600" />

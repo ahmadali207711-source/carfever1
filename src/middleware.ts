@@ -78,8 +78,9 @@ export async function middleware(request: NextRequest) {
     .eq('auth_user_id', user.id)
     .maybeSingle();
 
+  const ADMIN_LEVEL_ROLES = ['admin', 'content_manager', 'inspection_manager'];
   const role = dbUser?.role || user.user_metadata?.role;
-  if (role !== 'admin') {
+  if (!role || !ADMIN_LEVEL_ROLES.includes(role)) {
     const loginUrl = new URL('/admin/login', request.url);
     loginUrl.searchParams.set('error', 'admin_only');
     return NextResponse.redirect(loginUrl);

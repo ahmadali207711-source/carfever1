@@ -11,9 +11,8 @@ export function useRealtimeNotifications() {
   useEffect(() => {
     const supabase = createClient()
 
-    // Channel 1: New Car Listings (Pending) & Car Status Changes
-    const carsChannel = supabase
-      .channel('admin-cars-notifications')
+    const channel = supabase
+      .channel('admin-realtime')
       .on(
         'postgres_changes',
         {
@@ -22,7 +21,7 @@ export function useRealtimeNotifications() {
           table: 'cars',
           filter: 'status=eq.pending'
         },
-        (payload) => {
+        (payload: any) => {
           setNewListingsCount((prev) => prev + 1)
           toast('🚗 New Car Listing Submitted!', {
             description: `${payload.new.title} is pending approval`,
@@ -40,7 +39,7 @@ export function useRealtimeNotifications() {
           schema: 'public',
           table: 'cars'
         },
-        (payload) => {
+        (payload: any) => {
           const oldStatus = payload.old.status
           const newStatus = payload.new.status
           
@@ -57,11 +56,6 @@ export function useRealtimeNotifications() {
           }
         }
       )
-      .subscribe()
-
-    // Channel 2: New Inquiries
-    const inquiriesChannel = supabase
-      .channel('admin-inquiries-notifications')
       .on(
         'postgres_changes',
         {
@@ -69,7 +63,7 @@ export function useRealtimeNotifications() {
           schema: 'public',
           table: 'inquiries'
         },
-        (payload) => {
+        (payload: any) => {
           setNewInquiriesCount((prev) => prev + 1)
           toast('📩 New Inquiry Received!', {
             description: `From: ${payload.new.name} - ${payload.new.subject || 'No subject'}`,
@@ -80,11 +74,6 @@ export function useRealtimeNotifications() {
           })
         }
       )
-      .subscribe()
-
-    // Channel 3: New Inspection Bookings & Inspection Status Updates
-    const inspectionsChannel = supabase
-      .channel('admin-inspections-notifications')
       .on(
         'postgres_changes',
         {
@@ -92,7 +81,7 @@ export function useRealtimeNotifications() {
           schema: 'public',
           table: 'inspections'
         },
-        (payload) => {
+        (payload: any) => {
           toast('🔍 New Inspection Booked!', {
             description: `${payload.new.customer_name} booked ${payload.new.plan} plan for ${payload.new.make} ${payload.new.model}`,
             action: {
@@ -109,7 +98,7 @@ export function useRealtimeNotifications() {
           schema: 'public',
           table: 'inspections'
         },
-        (payload) => {
+        (payload: any) => {
           const oldStatus = payload.old.status
           const newStatus = payload.new.status
           
@@ -122,11 +111,8 @@ export function useRealtimeNotifications() {
       )
       .subscribe()
 
-    // Cleanup
     return () => {
-      supabase.removeChannel(carsChannel)
-      supabase.removeChannel(inquiriesChannel)
-      supabase.removeChannel(inspectionsChannel)
+      supabase.removeChannel(channel)
     }
   }, [])
 

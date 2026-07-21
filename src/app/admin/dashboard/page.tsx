@@ -204,6 +204,7 @@ export default function AdminDashboard() {
               <Link
                 key={q.href}
                 href={q.href}
+                prefetch={false}
                 className="flex items-center gap-3 p-4 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/80 transition-all group"
               >
                 <div
