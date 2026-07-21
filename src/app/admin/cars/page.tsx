@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Search, Plus, Edit, Trash2, CheckCircle, XCircle, MoreHorizontal, ChevronLeft, ChevronRight, Car as CarIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { deleteCar, approveCar, rejectCar } from '@/lib/admin-actions';
+import { fetchAdminCars, deleteCar, approveCar, rejectCar } from '@/lib/admin-actions';
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -58,7 +58,6 @@ export default function AdminCarsPage() {
   const fetchCars = useCallback(async () => {
     setLoading(true);
     try {
-      const { fetchAdminCars } = await import('@/lib/admin-actions');
       const result = await fetchAdminCars(debounced, page);
       setCars(result.data || []);
       setTotalPages(result.totalPages);

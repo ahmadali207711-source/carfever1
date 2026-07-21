@@ -15,6 +15,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { getAdminDashboardStats } from '@/lib/admin-actions';
 
 const quickLinks = [
   { label: "Add New Car",    href: "/admin/cars",        icon: Car,          color: "#0055FE" },
@@ -62,7 +63,6 @@ export default function AdminDashboard() {
 
     async function load() {
       try {
-        const { getAdminDashboardStats } = await import('@/lib/admin-actions');
         const data = await getAdminDashboardStats();
         if (data) setStats(data);
       } catch (err) {

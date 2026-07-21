@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Search, Plus, Edit, Trash2, Eye, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { deleteBlog, publishBlog } from '@/lib/admin-actions';
+import { fetchAdminBlogs, deleteBlog, publishBlog } from '@/lib/admin-actions';
 
 function StatusBadge({ status }: { status: string }) {
   const isPub = status === 'published';
@@ -53,7 +53,6 @@ export default function AdminBlogsPage() {
   const fetchBlogs = useCallback(async () => {
     setLoading(true);
     try {
-      const { fetchAdminBlogs } = await import('@/lib/admin-actions');
       const result = await fetchAdminBlogs(debounced, page);
       setBlogs(result.data || []);
       setTotalPages(result.totalPages);

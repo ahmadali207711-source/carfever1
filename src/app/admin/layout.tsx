@@ -26,6 +26,7 @@ import {
   Menu,
 } from "lucide-react";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
+import { getAdminInitialData, logoutAdmin } from "@/lib/admin-actions";
 
 interface MenuItem {
   label: string;
@@ -76,7 +77,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     async function initAdmin() {
       try {
-        const { getAdminInitialData } = await import("@/lib/admin-actions");
         const res = await getAdminInitialData();
 
         if (!res || !res.profile) {
@@ -96,7 +96,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
 
   const handleLogout = async () => {
-    const { logoutAdmin } = await import("@/lib/admin-actions");
     await logoutAdmin();
     setAdminUser(null);
     setIsAuthenticated(false);
