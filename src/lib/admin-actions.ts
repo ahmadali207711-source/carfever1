@@ -1133,3 +1133,43 @@ export async function resetUserPassword(userId: string, newPassword: string): Pr
   revalidatePath('/admin/users');
   return { success: true, message: `Password for ${userProfile.email} updated successfully.` };
 }
+
+export async function fetchCarDetailsById(id: string) {
+  await verifyAdminSession();
+  const supabase = createServiceRoleClient();
+
+  const { data: car, error } = await supabase
+    .from('cars')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !car) {
+    throw new Error(error?.message || 'Car listing not found');
+  }
+
+  let sellerProfile: any = null;
+  if (car.seller_id) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, name, email, phone, role, created_at')
+      .eq('id', car.seller_id)
+      .single();
+    if (profile) sellerProfile = profile;
+  }
+
+  let inquiryCount = 0;
+  try {
+    const { count } = await supabase
+      .from('inquiries')
+      .select('*', { count: 'exact', head: true })
+      .eq('car_id', id);
+    inquiryCount = count || 0;
+  } catch {}
+
+  return {
+    car,
+    sellerProfile,
+    inquiryCount,
+  };
+}

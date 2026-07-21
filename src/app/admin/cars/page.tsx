@@ -98,10 +98,6 @@ export default function AdminCarsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Detail Modal State
-  const [selectedCar, setSelectedCar] = useState<any | null>(null);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-
   useEffect(() => {
     const t = setTimeout(() => {
       setDebounced(search);
@@ -132,7 +128,6 @@ export default function AdminCarsPage() {
       await deleteCar(id);
       toast.success('Vehicle listing deleted successfully');
       setCars((prev) => prev.filter((x) => x.id !== id));
-      if (selectedCar?.id === id) setSelectedCar(null);
     } catch {
       toast.error('Failed to delete car listing');
     }
@@ -145,9 +140,6 @@ export default function AdminCarsPage() {
 
       toast.success(`Vehicle listing ${newStatus}`);
       setCars((prev) => prev.map((x) => (x.id === id ? { ...x, status: newStatus } : x)));
-      if (selectedCar?.id === id) {
-        setSelectedCar((prev: any) => (prev ? { ...prev, status: newStatus } : null));
-      }
     } catch {
       toast.error('Status update failed');
     }
@@ -346,17 +338,15 @@ export default function AdminCarsPage() {
                       {/* Explicit Inline Actions */}
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                          {/* View Details Button */}
-                          <button
-                            onClick={() => {
-                              setSelectedCar(car);
-                              setActiveImageIndex(0);
-                            }}
-                            title="View Full Vehicle Details & Photos"
+                          {/* View Details Page Link */}
+                          <Link
+                            href={isSeller ? `/seller/cars/${car.id}` : `/admin/cars/${car.id}`}
+                            prefetch={false}
+                            title="View Full Vehicle & Owner Details Page"
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all shadow-xs cursor-pointer hover:border-slate-300"
                           >
                             <Eye className="w-3.5 h-3.5 text-slate-500" /> View
-                          </button>
+                          </Link>
 
                           {/* Edit Listing Button */}
                           <Link
@@ -398,178 +388,6 @@ export default function AdminCarsPage() {
         </div>
         <Pagination page={page} totalPages={totalPages} onChange={setPage} />
       </div>
-
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          FULL VEHICLE DETAILS MODAL
-      ───────────────────────────────────────────────────────────────────────────── */}
-      {selectedCar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-3xl w-full my-8 overflow-hidden transform transition-all">
-            {/* Modal Header */}
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <StatusBadge status={selectedCar.status || 'pending'} />
-                <h3 className="text-lg font-black text-slate-900 tracking-tight">
-                  {selectedCar.title}
-                </h3>
-              </div>
-              <button
-                onClick={() => setSelectedCar(null)}
-                className="p-2 rounded-full text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-all cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
-              {/* Image Gallery Showcase */}
-              {(() => {
-                const images: string[] =
-                  Array.isArray(selectedCar.images) && selectedCar.images.length > 0
-                    ? selectedCar.images
-                    : selectedCar.image_url
-                    ? [selectedCar.image_url]
-                    : ['https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=600&q=80'];
-
-                return (
-                  <div className="space-y-3">
-                    <div className="w-full h-72 rounded-2xl bg-slate-900 overflow-hidden border border-slate-200 shadow-inner relative group">
-                      <img
-                        src={images[activeImageIndex] || images[0]}
-                        alt={selectedCar.title}
-                        className="w-full h-full object-cover transition-all"
-                      />
-                      <div className="absolute bottom-3 left-3 bg-black/75 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-full">
-                        Image {activeImageIndex + 1} of {images.length}
-                      </div>
-                    </div>
-
-                    {/* Thumbnails Row */}
-                    {images.length > 1 && (
-                      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                        {images.map((imgUrl, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setActiveImageIndex(idx)}
-                            className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
-                              activeImageIndex === idx
-                                ? 'border-[#0055FE] ring-2 ring-[#0055FE]/20 scale-105'
-                                : 'border-slate-200 opacity-60 hover:opacity-100'
-                            }`}
-                          >
-                            <img src={imgUrl} alt="Thumbnail" className="w-full h-full object-cover" />
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Price Banner */}
-              <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-extrabold uppercase text-blue-600 tracking-wider">Listing Price</p>
-                  <p className="text-2xl font-black text-slate-900 mt-0.5">
-                    {formatPricePKR(selectedCar.price)}
-                  </p>
-                </div>
-                {selectedCar.slug && (
-                  <Link
-                    href={`/cars/${selectedCar.slug}`}
-                    target="_blank"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-blue-200 text-[#0055FE] text-xs font-bold shadow-xs hover:bg-blue-50 transition-all"
-                  >
-                    View Live Page <ExternalLink className="w-3.5 h-3.5" />
-                  </Link>
-                )}
-              </div>
-
-              {/* Vehicle Specifications Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                    <Calendar className="w-3 h-3 text-[#0055FE]" /> Model Year
-                  </span>
-                  <p className="text-xs font-extrabold text-slate-900 mt-1">{selectedCar.year}</p>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                    <Gauge className="w-3 h-3 text-[#0055FE]" /> Mileage
-                  </span>
-                  <p className="text-xs font-extrabold text-slate-900 mt-1">
-                    {selectedCar.mileage ? `${selectedCar.mileage.toLocaleString()} km` : 'N/A'}
-                  </p>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                    <Fuel className="w-3 h-3 text-[#0055FE]" /> Fuel Type
-                  </span>
-                  <p className="text-xs font-extrabold text-slate-900 mt-1">{selectedCar.fuel_type || 'N/A'}</p>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                    <Sliders className="w-3 h-3 text-[#0055FE]" /> Transmission
-                  </span>
-                  <p className="text-xs font-extrabold text-slate-900 mt-1">{selectedCar.transmission || 'N/A'}</p>
-                </div>
-              </div>
-
-              {/* Seller Contact & Location Info */}
-              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/70 space-y-2">
-                <p className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
-                  <User className="w-4 h-4 text-[#0055FE]" /> Seller Contact Information
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-slate-600">
-                  <div>Name: <span className="font-extrabold text-slate-900">{selectedCar.seller_name || 'N/A'}</span></div>
-                  <div>Phone: <span className="font-extrabold text-slate-900">{selectedCar.seller_phone || 'N/A'}</span></div>
-                  <div>Location: <span className="font-extrabold text-slate-900">{selectedCar.city || 'N/A'}</span></div>
-                </div>
-              </div>
-
-              {/* Description */}
-              {selectedCar.description && (
-                <div>
-                  <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">
-                    Description
-                  </h4>
-                  <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100 whitespace-pre-line font-medium">
-                    {selectedCar.description}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer Actions */}
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between flex-wrap gap-3">
-              <button
-                onClick={() => handleDelete(selectedCar.id, selectedCar.title)}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold transition-all cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" /> Delete Listing
-              </button>
-
-              <div className="flex items-center gap-2">
-                <Link
-                  href={`${newCarUrl}?id=${selectedCar.id}`}
-                  prefetch={false}
-                  onClick={() => setSelectedCar(null)}
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#0055FE] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20"
-                >
-                  <Edit className="w-4 h-4" /> Edit Car Listing
-                </Link>
-                <button
-                  onClick={() => setSelectedCar(null)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-xs font-bold transition-all cursor-pointer"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
