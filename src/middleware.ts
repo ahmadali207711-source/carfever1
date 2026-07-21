@@ -27,8 +27,8 @@ export async function middleware(request: NextRequest) {
 
 
 
-  // Only protect /admin/* (excluding login)
-  if (!pathname.startsWith('/admin') || pathname === '/admin/login') {
+  // Only protect /admin/* (excluding login pages)
+  if (!pathname.startsWith('/admin') || pathname === '/admin/login' || pathname === '/login') {
     return response;
   }
 
@@ -62,7 +62,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    const loginUrl = new URL('/admin/login', request.url);
+    const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }

@@ -92,7 +92,7 @@ export function isAdminRole(role: string): boolean {
 export async function requireRole(roles: string[]): Promise<SessionUser> {
   const session = await getSession();
   if (!session || !roles.includes(session.role)) {
-    redirect('/admin/login');
+    redirect('/login');
   }
   return session;
 }
@@ -104,7 +104,7 @@ export async function requireAdmin(): Promise<SessionUser> {
 export async function requireAuth(): Promise<SessionUser> {
   const session = await getSession();
   if (!session) {
-    redirect('/admin/login');
+    redirect('/login');
   }
   return session;
 }
@@ -112,7 +112,7 @@ export async function requireAuth(): Promise<SessionUser> {
 export async function requireVerifiedSession(): Promise<SessionUser> {
   const session = await requireAuth();
   if (session.status === 'suspended') {
-    redirect('/admin/login?error=suspended');
+    redirect('/login?error=suspended');
   }
   return session;
 }

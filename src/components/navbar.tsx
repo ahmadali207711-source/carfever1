@@ -516,7 +516,7 @@ export function Navbar() {
                     Register
                   </Link>
                   <div className="hidden sm:flex items-center gap-2">
-                    <Link href="/admin/login">
+                    <Link href="/login">
                       <Button
                         variant="outline"
                         size="sm"
@@ -652,7 +652,7 @@ export function Navbar() {
                               Register
                             </Link>
                             <Link
-                              href="/admin/login"
+                              href="/login"
                               className="block w-full text-center py-3 rounded-xl border border-[#0055FE] text-[#0055FE] hover:bg-blue-50 text-sm font-semibold transition-all"
                               onClick={() => setMobileOpen(false)}
                             >

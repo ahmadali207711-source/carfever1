@@ -71,7 +71,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const sessionCheckedRef = useRef(false);
 
   useEffect(() => {
-    if (pathname === "/admin/login") return;
+    if (pathname === "/admin/login" || pathname === "/login") return;
     if (sessionCheckedRef.current) return;
     sessionCheckedRef.current = true;
 
@@ -80,13 +80,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         const res = await getAdminInitialData();
 
         if (!res || !res.profile) {
-          router.push("/admin/login");
+          router.push("/login");
           return;
         }
 
         if (res.suspended || (res.profile as any).isSuspended || res.profile.status === 'suspended') {
           await logoutAdmin();
-          router.push("/admin/login?error=suspended");
+          router.push("/login?error=suspended");
           return;
         }
 
@@ -96,9 +96,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       } catch (err: any) {
         if (err?.message?.includes("suspended")) {
           await logoutAdmin();
-          router.push("/admin/login?error=suspended");
+          router.push("/login?error=suspended");
         } else {
-          router.push("/admin/login");
+          router.push("/login");
         }
       }
     }
@@ -110,10 +110,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     await logoutAdmin();
     setAdminUser(null);
     setIsAuthenticated(false);
-    router.push("/admin/login");
+    router.push("/login");
   };
 
-  if (pathname === "/admin/login") return <>{children}</>;
+  if (pathname === "/admin/login" || pathname === "/login") return <>{children}</>;
 
   if (!isAuthenticated) {
     return (

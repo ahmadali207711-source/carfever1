@@ -197,7 +197,7 @@ export default function RegisterPage() {
               </Link>
 
               <Link
-                href="/admin/login"
+                href="/login"
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0055FE] hover:underline"
               >
                 Sign In Instead
@@ -352,7 +352,7 @@ export default function RegisterPage() {
             <div className="mt-6 pt-4 border-t border-slate-100 text-center text-xs text-slate-500 space-y-1">
               <div>
                 Already registered?{' '}
-                <Link href="/admin/login" className="font-bold text-[#0055FE] hover:underline">
+                <Link href="/login" className="font-bold text-[#0055FE] hover:underline">
                   Sign in to portal
                 </Link>
               </div>

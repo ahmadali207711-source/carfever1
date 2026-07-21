@@ -651,6 +651,7 @@ export async function loginAdmin(email: string, password: string) {
 export async function logoutAdmin(): Promise<void> {
   const supabase = await createServerClient();
   await supabase.auth.signOut();
+  revalidatePath('/login');
   revalidatePath('/admin/login');
 }
 
