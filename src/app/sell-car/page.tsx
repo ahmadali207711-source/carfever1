@@ -132,10 +132,24 @@ export default function SellCarPage() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const handleKeyDownNumber = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["-", "+", "e", "E"].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+
+    if (name === "mileage" || name === "engineCapacity" || name === "price") {
+      value = value.replace(/[^0-9.]/g, "");
+      if (value !== "" && parseFloat(value) < 0) {
+        value = "0";
+      }
+    }
+
     setFormData((prev) => {
       const updated = { ...prev, [name]: value };
       if (name === "make" && value !== "Other (Type Custom)") {
@@ -262,6 +276,8 @@ export default function SellCarPage() {
 
   const inputClass =
     "w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#0055FE] focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-sm";
+  const numberInputClass =
+    "w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#0055FE] focus:ring-4 focus:ring-blue-500/10 transition-all font-medium text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
   const selectClass =
     "w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:outline-none focus:bg-white focus:border-[#0055FE] focus:ring-4 focus:ring-blue-500/10 transition-all cursor-pointer font-medium text-sm";
   const labelClass =
@@ -464,10 +480,12 @@ export default function SellCarPage() {
                       <input
                         type="number"
                         name="mileage"
+                        min="0"
                         placeholder="e.g. 35000"
                         value={formData.mileage}
+                        onKeyDown={handleKeyDownNumber}
                         onChange={handleInputChange}
-                        className={inputClass}
+                        className={numberInputClass}
                       />
                       <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400 pointer-events-none">
                         KM
@@ -484,10 +502,12 @@ export default function SellCarPage() {
                       <input
                         type="number"
                         name="engineCapacity"
+                        min="0"
                         placeholder="e.g. 1300 or 1800"
                         value={formData.engineCapacity}
+                        onKeyDown={handleKeyDownNumber}
                         onChange={handleInputChange}
-                        className={inputClass}
+                        className={numberInputClass}
                       />
                       <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400 pointer-events-none">
                         CC
@@ -649,10 +669,13 @@ export default function SellCarPage() {
                       <input
                         type="number"
                         name="price"
+                        min="0"
+                        step="any"
                         placeholder="e.g. 48.5 (for 48 Lac 50 Thousand)"
                         value={formData.price}
+                        onKeyDown={handleKeyDownNumber}
                         onChange={handleInputChange}
-                        className={`${inputClass} pl-14`}
+                        className={`${numberInputClass} pl-14`}
                       />
                     </div>
                   </div>
