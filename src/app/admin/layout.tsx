@@ -80,7 +80,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         const res = await getAdminInitialData();
 
         if (!res || !res.profile) {
-          router.push("/admin/login?error=admin_only");
+          router.push("/admin/login");
           return;
         }
 

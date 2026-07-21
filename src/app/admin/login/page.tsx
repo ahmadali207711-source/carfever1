@@ -39,8 +39,8 @@ export default function AdminLoginPage() {
       const errParam = params.get("error");
       if (errParam === "rate_limited") {
         setError("Too many requests. Please wait a moment before trying again.");
-      } else if (errParam === "unauthorized" || errParam === "admin_only") {
-        setError("Please sign in with an admin account to access the portal.");
+      } else if (errParam === "unauthorized") {
+        setError("Please sign in to continue to your account.");
       } else if (errParam === "suspended") {
         setError("Your account has been suspended. Please contact the administrator for assistance.");
       }
@@ -135,7 +135,7 @@ export default function AdminLoginPage() {
                 Car<span className="text-blue-200">Fever</span>
               </span>
               <span className="text-[10px] text-blue-100/80 tracking-[0.2em] uppercase font-semibold mt-1">
-                Admin Console
+                Official Portal
               </span>
             </div>
           </Link>
@@ -220,10 +220,10 @@ export default function AdminLoginPage() {
               <Lock className="w-6 h-6" />
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Sign In to Portal
+              Sign In to CarFever
             </h2>
             <p className="text-sm text-slate-500 mt-1.5">
-              Enter your administrative credentials to continue.
+              Enter your credentials to access your account.
             </p>
           </div>
 
