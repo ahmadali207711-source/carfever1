@@ -73,14 +73,26 @@ export async function createCar(input: CarInsert) {
 
   const ip = await getClientIp();
   const { allowed } = rateLimit('car-listing', ip);
-  if (!allowed) handleError(new Error('rate_limited'), 'Too many requests');
+  if (!allowed) handleError(new Error('Rate limit exceeded. Please wait a moment before trying again.'), 'Too many requests');
 
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase
+  const payload: any = { ...input };
+  if (payload.make && !payload.brand) {
+    payload.brand = payload.make;
+  }
+
+  let { data, error } = await supabase
     .from('cars')
-    .insert(input)
+    .insert(payload)
     .select()
     .single();
+
+  if (error && error.message.includes('brand')) {
+    delete payload.brand;
+    const retry = await supabase.from('cars').insert(payload).select().single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) handleError(error, 'Failed to create car');
   revalidatePath('/admin/cars');
@@ -89,15 +101,27 @@ export async function createCar(input: CarInsert) {
 }
 
 export async function updateCar(id: string, input: CarUpdate) {
-  await verifyAdminSession();
+  await verifyContentManagerAccess();
 
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase
+  const payload: any = { ...input };
+  if (payload.make && !payload.brand) {
+    payload.brand = payload.make;
+  }
+
+  let { data, error } = await supabase
     .from('cars')
-    .update(input)
+    .update(payload)
     .eq('id', id)
     .select()
     .single();
+
+  if (error && error.message.includes('brand')) {
+    delete payload.brand;
+    const retry = await supabase.from('cars').update(payload).eq('id', id).select().single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) handleError(error, 'Failed to update car');
   revalidatePath('/admin/cars');
@@ -178,11 +202,11 @@ export async function deleteBlog(id: string) {
 }
 
 export async function uploadImage(file: File): Promise<string> {
-  await verifyAdminSession();
+  await verifyContentManagerAccess();
 
   const ip = await getClientIp();
   const { allowed } = rateLimit('upload', ip);
-  if (!allowed) handleError(new Error('rate_limited'), 'Too many uploads');
+  if (!allowed) handleError(new Error('Upload rate limit exceeded. Please wait a moment.'), 'Too many uploads');
 
   const supabase = createServiceRoleClient();
 
@@ -194,7 +218,7 @@ export async function uploadImage(file: File): Promise<string> {
 
   const { error } = await supabase.storage
     .from('car-images')
-    .upload(filename, buffer, { contentType: file.type || 'image/jpeg', upsert: false });
+    .upload(filename, buffer, { contentType: file.type || 'image/jpeg', upsert: true });
 
   if (error) throw new Error(`Image upload failed: ${error.message}`);
 

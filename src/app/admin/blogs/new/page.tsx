@@ -146,7 +146,7 @@ export default function EditBlogPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/admin/blogs">
+          <Link href="/admin/blogs" prefetch={false}>
             <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
               <ArrowLeft className="w-5 h-5" />
             </Button>

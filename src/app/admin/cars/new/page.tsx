@@ -170,7 +170,7 @@ export default function EditCarPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/admin/cars">
+          <Link href="/admin/cars" prefetch={false}>
             <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -179,7 +179,7 @@ export default function EditCarPage() {
             {id ? 'Edit Car' : 'Add New Car'}
           </h2>
         </div>
-        <Button onClick={handleSubmit} disabled={loading} className="bg-red-600 hover:bg-red-700 text-white">
+        <Button type="submit" form="car-form" disabled={loading} className="bg-red-600 hover:bg-red-700 text-white">
           {loading ? 'Saving...' : (
             <>
               <Save className="w-4 h-4 mr-2" />
@@ -189,7 +189,7 @@ export default function EditCarPage() {
         </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form id="car-form" onSubmit={handleSubmit} className="space-y-8">
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 space-y-6">
           <h3 className="text-lg font-medium text-white border-b border-zinc-800 pb-2">Basic Information</h3>
           
