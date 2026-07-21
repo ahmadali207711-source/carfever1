@@ -1056,3 +1056,53 @@ export async function fetchAdminInquiries() {
   if (error) handleError(error, 'Failed to fetch inquiries');
   return data ?? [];
 }
+
+export async function resetUserPassword(userId: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+  await verifyAdminSession();
+
+  if (!userId || !newPassword || newPassword.length < 6) {
+    throw new Error('Password must be at least 6 characters long.');
+  }
+
+  const serviceClient = createServiceRoleClient();
+  const { data: userProfile, error: profileErr } = await serviceClient
+    .from('users')
+    .select('id, email, auth_user_id')
+    .eq('id', userId)
+    .single();
+
+  if (profileErr || !userProfile) {
+    throw new Error('Target user not found.');
+  }
+
+  let authUserId = userProfile.auth_user_id;
+
+  if (!authUserId) {
+    const { data: authUsers, error: listErr } = await serviceClient.auth.admin.listUsers();
+    if (!listErr && authUsers?.users) {
+      const matchedUser = authUsers.users.find(u => u.email?.toLowerCase() === userProfile.email.toLowerCase());
+      if (matchedUser) {
+        authUserId = matchedUser.id;
+        await serviceClient
+          .from('users')
+          .update({ auth_user_id: matchedUser.id })
+          .eq('id', userId);
+      }
+    }
+  }
+
+  if (!authUserId) {
+    throw new Error(`Auth account for email ${userProfile.email} could not be resolved.`);
+  }
+
+  const { error: updateErr } = await serviceClient.auth.admin.updateUserById(authUserId, {
+    password: newPassword,
+  });
+
+  if (updateErr) {
+    throw new Error(updateErr.message || 'Failed to update user password.');
+  }
+
+  revalidatePath('/admin/users');
+  return { success: true, message: `Password for ${userProfile.email} updated successfully.` };
+}
