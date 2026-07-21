@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { updateUserStatus, fetchAllUsers, getAdminProfile } from '@/lib/admin-actions';
+import { updateUserStatus, updateUserRole, fetchAllUsers, getAdminProfile } from '@/lib/admin-actions';
 import type { DbUser, UserStatus, UserRole } from '@/lib/supabase/types';
 
 const STATUS_STYLE: Record<UserStatus, string> = {
@@ -239,6 +239,22 @@ export default function UsersPage() {
     }
   };
 
+  const handleRoleChange = async (user: DbUser, newRole: UserRole) => {
+    if (user.role === newRole) return;
+    setUsers(prev =>
+      prev.map(u => (u.id === user.id ? { ...u, role: newRole } : u)),
+    );
+    try {
+      await updateUserRole(user.id, newRole);
+      toast.success(`${user.name}'s role updated to ${ROLE_LABEL[newRole]}.`);
+    } catch (err: any) {
+      setUsers(prev =>
+        prev.map(u => (u.id === user.id ? { ...u, role: user.role } : u)),
+      );
+      toast.error(`Failed to update role: ${err.message}`);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl">
       {/* Header */}
@@ -395,11 +411,17 @@ export default function UsersPage() {
                     </td>
 
                     <td className="py-4 px-5">
-                      <Badge
-                        className={`text-[10px] font-bold px-2.5 py-0.5 uppercase border ${ROLE_STYLE[user.role]}`}
+                      <select
+                        value={user.role}
+                        onChange={e => handleRoleChange(user, e.target.value as UserRole)}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border uppercase cursor-pointer outline-none transition-colors ${ROLE_STYLE[user.role]}`}
                       >
-                        {ROLE_LABEL[user.role]}
-                      </Badge>
+                        <option value="admin" className="bg-white text-slate-900 font-bold">Admin</option>
+                        <option value="content_manager" className="bg-white text-slate-900 font-bold">Content Mgr</option>
+                        <option value="inspection_manager" className="bg-white text-slate-900 font-bold">Inspection Mgr</option>
+                        <option value="seller" className="bg-white text-slate-900 font-bold">Seller</option>
+                        <option value="buyer" className="bg-white text-slate-900 font-bold">Buyer</option>
+                      </select>
                     </td>
 
                     <td className="py-4 px-5">

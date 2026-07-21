@@ -460,6 +460,49 @@ export async function updateUserStatus(
   return true;
 }
 
+export async function updateUserRole(
+  userId: string,
+  role: 'admin' | 'content_manager' | 'inspection_manager' | 'seller' | 'buyer',
+): Promise<true> {
+  await verifyAdminSession();
+
+  const supabase = createServiceRoleClient();
+
+  const { data: targetUser } = await supabase
+    .from('users')
+    .select('id, auth_user_id, email')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (targetUser) {
+    let targetAuthId = targetUser.auth_user_id;
+
+    if (!targetAuthId && targetUser.email) {
+      const { data: listData } = await supabase.auth.admin.listUsers();
+      const match = listData?.users?.find(u => u.email?.toLowerCase() === targetUser.email.toLowerCase());
+      if (match) targetAuthId = match.id;
+    }
+
+    if (targetAuthId) {
+      await supabase.auth.admin.updateUserById(targetAuthId, {
+        user_metadata: { role },
+      });
+    }
+  }
+
+  const { error } = await supabase
+    .from('users')
+    .update({
+      role,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+
+  if (error) handleError(error, 'Failed to update user role');
+  revalidatePath('/admin/users');
+  return true;
+}
+
 // ============================================================================
 // SITE SETTINGS
 // ============================================================================
@@ -518,7 +561,7 @@ export async function loginAdmin(email: string, password: string) {
     const { data: byEmail } = await serviceClient
       .from('users')
       .select('id, name, email, role, status')
-      .eq('email', authData.user.email)
+      .ilike('email', authData.user.email.trim())
       .maybeSingle();
 
     if (byEmail) {

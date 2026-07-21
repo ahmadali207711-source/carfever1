@@ -31,7 +31,7 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
       const { data: byEmail } = await serviceClient
         .from('users')
         .select('id, auth_user_id, name, email, role, status')
-        .eq('email', user.email)
+        .ilike('email', user.email.trim())
         .maybeSingle();
 
       if (byEmail) {
