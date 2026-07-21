@@ -3,20 +3,56 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Search, Plus, Edit, Trash2, CheckCircle, XCircle, MoreHorizontal, ChevronLeft, ChevronRight, Car as CarIcon } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  CheckCircle,
+  XCircle,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  Car as CarIcon,
+  X,
+  MapPin,
+  Calendar,
+  Gauge,
+  Fuel,
+  Sliders,
+  DollarSign,
+  User,
+  Phone,
+  ShieldAlert,
+  Sparkles,
+  ExternalLink,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchAdminCars, deleteCar, approveCar, rejectCar } from '@/lib/admin-actions';
 
+function formatPricePKR(price?: number): string {
+  if (!price || isNaN(price)) return 'PKR 0';
+  if (price >= 10000000) {
+    const crore = (price / 10000000).toFixed(2);
+    return `PKR ${crore} Crore`;
+  } else if (price >= 100000) {
+    const lacs = (price / 100000).toFixed(2);
+    return `PKR ${lacs} Lac`;
+  }
+  return `PKR ${price.toLocaleString()}`;
+}
+
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    rejected: 'bg-rose-50 text-rose-700 border-rose-200',
-    pending:  'bg-amber-50 text-amber-700 border-amber-200',
+  const map: Record<string, { bg: string; dot: string; label: string }> = {
+    approved: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/80', dot: 'bg-emerald-500', label: 'Approved' },
+    rejected: { bg: 'bg-rose-50 text-rose-700 border-rose-200/80', dot: 'bg-rose-500', label: 'Rejected' },
+    pending:  { bg: 'bg-amber-50 text-amber-700 border-amber-200/80', dot: 'bg-amber-500 animate-pulse', label: 'Pending Review' },
   };
-  const cls = map[status] || map.pending;
+  const item = map[status] || map.pending;
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${cls}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${item.bg} shadow-xs`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />
+      {item.label}
     </span>
   );
 }
@@ -24,18 +60,25 @@ function StatusBadge({ status }: { status: string }) {
 function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
   if (totalPages <= 1) return null;
   return (
-    <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100">
-      <p className="text-xs font-medium text-slate-400">
-        Page {page} of {totalPages}
+    <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+      <p className="text-xs font-semibold text-slate-500">
+        Showing Page <span className="text-slate-900 font-extrabold">{page}</span> of{' '}
+        <span className="text-slate-900 font-extrabold">{totalPages}</span>
       </p>
-      <div className="flex gap-1">
-        <button onClick={() => onChange(page - 1)} disabled={page <= 1}
-          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 cursor-pointer">
-          <ChevronLeft className="w-4 h-4" />
+      <div className="flex gap-2">
+        <button
+          onClick={() => onChange(page - 1)}
+          disabled={page <= 1}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white transition-all shadow-xs cursor-pointer"
+        >
+          <ChevronLeft className="w-4 h-4" /> Previous
         </button>
-        <button onClick={() => onChange(page + 1)} disabled={page >= totalPages}
-          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 cursor-pointer">
-          <ChevronRight className="w-4 h-4" />
+        <button
+          onClick={() => onChange(page + 1)}
+          disabled={page >= totalPages}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white transition-all shadow-xs cursor-pointer"
+        >
+          Next <ChevronRight className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -51,12 +94,19 @@ export default function AdminCarsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [menu, setMenu] = useState<string | null>(null);
+
+  // Detail Modal State
+  const [selectedCar, setSelectedCar] = useState<any | null>(null);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
-    const t = setTimeout(() => { setDebounced(search); setPage(1); }, 450);
+    const t = setTimeout(() => {
+      setDebounced(search);
+      setPage(1);
+    }, 400);
     return () => clearTimeout(t);
   }, [search]);
 
@@ -67,132 +117,459 @@ export default function AdminCarsPage() {
       setCars(result.data || []);
       setTotalPages(result.totalPages);
     } catch {
-      toast.error('Failed to load cars');
+      toast.error('Failed to load vehicle listings');
     }
     setLoading(false);
   }, [debounced, page]);
 
-  useEffect(() => { fetchCars(); }, [fetchCars]);
+  useEffect(() => {
+    fetchCars();
+  }, [fetchCars]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this car listing permanently?')) return;
-    try { await deleteCar(id); toast.success('Deleted'); setCars(c => c.filter(x => x.id !== id)); }
-    catch { toast.error('Failed to delete'); }
-  };
-
-  const handleStatus = async (id: string, s: 'approved' | 'rejected') => {
+  const handleDelete = async (id: string, title?: string) => {
+    if (!confirm(`Are you sure you want to permanently delete "${title || 'this vehicle'}"?`)) return;
     try {
-      if (s === 'approved') await approveCar(id); else await rejectCar(id);
-      toast.success(`Car ${s}`);
-      setCars(c => c.map(x => x.id === id ? { ...x, status: s } : x));
-    } catch { toast.error('Status update failed'); }
-    setMenu(null);
+      await deleteCar(id);
+      toast.success('Vehicle listing deleted successfully');
+      setCars((prev) => prev.filter((x) => x.id !== id));
+      if (selectedCar?.id === id) setSelectedCar(null);
+    } catch {
+      toast.error('Failed to delete car listing');
+    }
   };
+
+  const handleStatusChange = async (id: string, newStatus: 'approved' | 'rejected') => {
+    try {
+      if (newStatus === 'approved') await approveCar(id);
+      else await rejectCar(id);
+
+      toast.success(`Vehicle listing ${newStatus}`);
+      setCars((prev) => prev.map((x) => (x.id === id ? { ...x, status: newStatus } : x)));
+      if (selectedCar?.id === id) {
+        setSelectedCar((prev: any) => (prev ? { ...prev, status: newStatus } : null));
+      }
+    } catch {
+      toast.error('Status update failed');
+    }
+  };
+
+  const filteredCars = cars.filter((car) => {
+    if (statusFilter === 'all') return true;
+    return car.status === statusFilter;
+  });
 
   return (
-    <div className="space-y-6 max-w-7xl">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+    <div className="space-y-6 max-w-7xl pb-12">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Car Listings</h1>
-          <p className="text-xs font-semibold text-slate-500 mt-1">Manage, approve, or remove car inventory.</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+            <CarIcon className="w-7 h-7 text-[#0055FE]" />
+            Car Inventory & Listings
+          </h1>
+          <p className="text-xs font-semibold text-slate-500 mt-1">
+            Manage, review photos, edit specs, approve or remove vehicle listings across the platform.
+          </p>
         </div>
-        <Link href={newCarUrl} prefetch={false}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0055FE] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm shadow-blue-500/20">
-          <Plus className="w-4 h-4" /> Add New Car
+        <Link
+          href={newCarUrl}
+          prefetch={false}
+          className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0055FE] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20 active:scale-95"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" /> Create New Vehicle Listing
         </Link>
       </div>
 
-      <div className="relative max-w-xs">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input className="w-full bg-white border border-slate-200 rounded-xl text-xs font-medium pl-10 pr-4 py-2.5 text-slate-900 outline-none focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE] transition-all shadow-xs"
-          placeholder="Search by title…" value={search} onChange={e => setSearch(e.target.value)} />
+      {/* Filters & Search Toolbar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Status Tabs */}
+        <div className="flex items-center p-1 bg-slate-100/80 rounded-xl border border-slate-200/60 overflow-x-auto">
+          {[
+            { id: 'all', label: 'All Vehicles' },
+            { id: 'pending', label: 'Pending' },
+            { id: 'approved', label: 'Approved' },
+            { id: 'rejected', label: 'Rejected' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
+              className={`px-4 py-2 text-xs font-extrabold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                statusFilter === tab.id
+                  ? 'bg-white text-[#0055FE] shadow-xs border border-slate-200/60'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative w-full md:w-80">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            className="w-full bg-white border border-slate-200 rounded-xl text-xs font-semibold pl-10 pr-4 py-2.5 text-slate-900 outline-none focus:border-[#0055FE] focus:ring-2 focus:ring-[#0055FE]/10 transition-all shadow-xs placeholder:text-slate-400"
+            placeholder="Search by title, brand, model..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* Main Table Container */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-visible">
+        <div className="overflow-x-auto rounded-2xl">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                <th className="py-3.5 px-5">Car</th>
-                <th className="py-3.5 px-5">Price</th>
-                <th className="py-3.5 px-5">Status</th>
-                <th className="py-3.5 px-5">Added</th>
-                <th className="py-3.5 px-5 text-right">Actions</th>
+              <tr className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                <th className="py-4 px-6">Vehicle Info</th>
+                <th className="py-4 px-6">Price</th>
+                <th className="py-4 px-6">Status</th>
+                <th className="py-4 px-6">Date Added</th>
+                <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+            <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
               {loading ? (
-                Array.from({ length: 3 }).map((_, i) => (
+                Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td className="py-4 px-5"><div className="h-4 w-48 bg-slate-100 rounded" /></td>
-                    <td className="py-4 px-5"><div className="h-4 w-20 bg-slate-100 rounded" /></td>
-                    <td className="py-4 px-5"><div className="h-4 w-16 bg-slate-100 rounded" /></td>
-                    <td className="py-4 px-5"><div className="h-4 w-24 bg-slate-100 rounded" /></td>
-                    <td className="py-4 px-5"><div className="h-4 w-12 bg-slate-100 rounded ml-auto" /></td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-14 h-14 bg-slate-100 rounded-xl" />
+                        <div className="space-y-2">
+                          <div className="h-4 w-44 bg-slate-100 rounded" />
+                          <div className="h-3 w-28 bg-slate-100 rounded" />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6"><div className="h-4 w-24 bg-slate-100 rounded" /></td>
+                    <td className="py-4 px-6"><div className="h-5 w-20 bg-slate-100 rounded-full" /></td>
+                    <td className="py-4 px-6"><div className="h-4 w-20 bg-slate-100 rounded" /></td>
+                    <td className="py-4 px-6"><div className="h-8 w-24 bg-slate-100 rounded-xl ml-auto" /></td>
                   </tr>
                 ))
-              ) : cars.length === 0 ? (
-                <tr><td colSpan={5} className="py-12 text-center text-slate-400 font-semibold">No cars found.</td></tr>
-              ) : cars.map(car => (
-                <tr key={car.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-4 px-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0 flex items-center justify-center border border-slate-200">
-                        {car.images?.[0]
-                          ? <img src={car.images[0]} alt={car.title} className="w-full h-full object-cover" />
-                          : <CarIcon className="w-5 h-5 text-slate-400" />}
+              ) : filteredCars.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-16 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
+                      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+                        <CarIcon className="w-6 h-6" />
                       </div>
-                      <div>
-                        <p className="font-bold text-slate-900 text-xs">{car.title}</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5 font-medium">{car.make} • {car.year}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-5 font-bold text-emerald-600">PKR {car.price?.toLocaleString()}</td>
-                  <td className="py-4 px-5"><StatusBadge status={car.status} /></td>
-                  <td className="py-4 px-5 text-slate-500 font-medium">{new Date(car.created_at).toLocaleDateString()}</td>
-                  <td className="py-4 px-5 text-right relative">
-                    <div className="relative inline-block">
-                      <button onClick={() => setMenu(menu === car.id ? null : car.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
-                      {menu === car.id && (
-                        <>
-                          <div onClick={() => setMenu(null)} className="fixed inset-0 z-20" />
-                          <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-xl z-30 overflow-hidden py-1">
-                            <Link href={`${newCarUrl}?id=${car.id}`} prefetch={false} onClick={() => setMenu(null)}
-                              className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                              <Edit className="w-3.5 h-3.5 text-slate-400" /> Edit
-                            </Link>
-                            {car.status !== 'approved' && (
-                              <button onClick={() => handleStatus(car.id, 'approved')}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 cursor-pointer">
-                                <CheckCircle className="w-3.5 h-3.5" /> Approve
-                              </button>
-                            )}
-                            {car.status !== 'rejected' && (
-                              <button onClick={() => handleStatus(car.id, 'rejected')}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-amber-600 hover:bg-amber-50 cursor-pointer">
-                                <XCircle className="w-3.5 h-3.5" /> Reject
-                              </button>
-                            )}
-                            <button onClick={() => handleDelete(car.id)}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 cursor-pointer">
-                              <Trash2 className="w-3.5 h-3.5" /> Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
+                      <p className="text-sm font-extrabold text-slate-900">No vehicles found</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Try adjusting your search criteria or add a new listing.
+                      </p>
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredCars.map((car) => {
+                  const displayImage =
+                    (Array.isArray(car.images) && car.images.length > 0 && car.images[0]) ||
+                    car.image_url ||
+                    'https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=600&q=80';
+
+                  return (
+                    <tr key={car.id} className="hover:bg-blue-50/30 transition-colors group">
+                      {/* Vehicle Column */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200 shadow-xs relative group-hover:scale-105 transition-transform">
+                            <img
+                              src={displayImage}
+                              alt={car.title}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src =
+                                  'https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=600&q=80';
+                              }}
+                            />
+                            {Array.isArray(car.images) && car.images.length > 1 && (
+                              <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md backdrop-blur-xs">
+                                +{car.images.length - 1}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-extrabold text-slate-900 text-sm group-hover:text-[#0055FE] transition-colors">
+                              {car.title}
+                            </p>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500 font-semibold mt-1 flex-wrap">
+                              <span>{car.brand || car.make}</span>
+                              <span>•</span>
+                              <span>{car.model}</span>
+                              <span>•</span>
+                              <span>{car.year}</span>
+                              {car.city && (
+                                <>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-0.5 text-slate-600">
+                                    <MapPin className="w-3 h-3 text-slate-400" /> {car.city}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Price Column */}
+                      <td className="py-4 px-6">
+                        <div className="font-black text-slate-900 text-sm">
+                          {formatPricePKR(car.price)}
+                        </div>
+                        {car.price >= 100000 && (
+                          <div className="text-[11px] text-slate-400 font-medium mt-0.5">
+                            PKR {car.price?.toLocaleString()}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Status Column */}
+                      <td className="py-4 px-6">
+                        <StatusBadge status={car.status || 'pending'} />
+                      </td>
+
+                      {/* Added Date */}
+                      <td className="py-4 px-6 text-slate-500 font-medium text-xs">
+                        {car.created_at ? new Date(car.created_at).toLocaleDateString() : 'N/A'}
+                      </td>
+
+                      {/* Explicit Inline Actions */}
+                      <td className="py-4 px-6 text-right">
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          {/* View Details Button */}
+                          <button
+                            onClick={() => {
+                              setSelectedCar(car);
+                              setActiveImageIndex(0);
+                            }}
+                            title="View Full Vehicle Details & Photos"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all shadow-xs cursor-pointer hover:border-slate-300"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-slate-500" /> View
+                          </button>
+
+                          {/* Edit Listing Button */}
+                          <Link
+                            href={`${newCarUrl}?id=${car.id}`}
+                            prefetch={false}
+                            title="Edit Listing Details & Photos"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-[#0055FE] text-xs font-bold transition-all shadow-xs hover:border-blue-300"
+                          >
+                            <Edit className="w-3.5 h-3.5 text-[#0055FE]" /> Edit
+                          </Link>
+
+                          {/* Admin Approval Quick Action */}
+                          {!isSeller && car.status !== 'approved' && (
+                            <button
+                              onClick={() => handleStatusChange(car.id, 'approved')}
+                              title="Approve Listing"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold transition-all cursor-pointer"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Approve
+                            </button>
+                          )}
+
+                          {/* Delete Action Button */}
+                          <button
+                            onClick={() => handleDelete(car.id, car.title)}
+                            title="Delete Car Listing"
+                            className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 text-slate-400 transition-all shadow-xs cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
         <Pagination page={page} totalPages={totalPages} onChange={setPage} />
       </div>
+
+      {/* ─────────────────────────────────────────────────────────────────────────────
+          FULL VEHICLE DETAILS MODAL
+      ───────────────────────────────────────────────────────────────────────────── */}
+      {selectedCar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-3xl w-full my-8 overflow-hidden transform transition-all">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <StatusBadge status={selectedCar.status || 'pending'} />
+                <h3 className="text-lg font-black text-slate-900 tracking-tight">
+                  {selectedCar.title}
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedCar(null)}
+                className="p-2 rounded-full text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+              {/* Image Gallery Showcase */}
+              {(() => {
+                const images: string[] =
+                  Array.isArray(selectedCar.images) && selectedCar.images.length > 0
+                    ? selectedCar.images
+                    : selectedCar.image_url
+                    ? [selectedCar.image_url]
+                    : ['https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=600&q=80'];
+
+                return (
+                  <div className="space-y-3">
+                    <div className="w-full h-72 rounded-2xl bg-slate-900 overflow-hidden border border-slate-200 shadow-inner relative group">
+                      <img
+                        src={images[activeImageIndex] || images[0]}
+                        alt={selectedCar.title}
+                        className="w-full h-full object-cover transition-all"
+                      />
+                      <div className="absolute bottom-3 left-3 bg-black/75 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-full">
+                        Image {activeImageIndex + 1} of {images.length}
+                      </div>
+                    </div>
+
+                    {/* Thumbnails Row */}
+                    {images.length > 1 && (
+                      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                        {images.map((imgUrl, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setActiveImageIndex(idx)}
+                            className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
+                              activeImageIndex === idx
+                                ? 'border-[#0055FE] ring-2 ring-[#0055FE]/20 scale-105'
+                                : 'border-slate-200 opacity-60 hover:opacity-100'
+                            }`}
+                          >
+                            <img src={imgUrl} alt="Thumbnail" className="w-full h-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Price Banner */}
+              <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-extrabold uppercase text-blue-600 tracking-wider">Listing Price</p>
+                  <p className="text-2xl font-black text-slate-900 mt-0.5">
+                    {formatPricePKR(selectedCar.price)}
+                  </p>
+                </div>
+                {selectedCar.slug && (
+                  <Link
+                    href={`/cars/${selectedCar.slug}`}
+                    target="_blank"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-blue-200 text-[#0055FE] text-xs font-bold shadow-xs hover:bg-blue-50 transition-all"
+                  >
+                    View Live Page <ExternalLink className="w-3.5 h-3.5" />
+                  </Link>
+                )}
+              </div>
+
+              {/* Vehicle Specifications Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-[#0055FE]" /> Model Year
+                  </span>
+                  <p className="text-xs font-extrabold text-slate-900 mt-1">{selectedCar.year}</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                    <Gauge className="w-3 h-3 text-[#0055FE]" /> Mileage
+                  </span>
+                  <p className="text-xs font-extrabold text-slate-900 mt-1">
+                    {selectedCar.mileage ? `${selectedCar.mileage.toLocaleString()} km` : 'N/A'}
+                  </p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                    <Fuel className="w-3 h-3 text-[#0055FE]" /> Fuel Type
+                  </span>
+                  <p className="text-xs font-extrabold text-slate-900 mt-1">{selectedCar.fuel_type || 'N/A'}</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                    <Sliders className="w-3 h-3 text-[#0055FE]" /> Transmission
+                  </span>
+                  <p className="text-xs font-extrabold text-slate-900 mt-1">{selectedCar.transmission || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* Seller Contact & Location Info */}
+              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/70 space-y-2">
+                <p className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                  <User className="w-4 h-4 text-[#0055FE]" /> Seller Contact Information
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-slate-600">
+                  <div>Name: <span className="font-extrabold text-slate-900">{selectedCar.seller_name || 'N/A'}</span></div>
+                  <div>Phone: <span className="font-extrabold text-slate-900">{selectedCar.seller_phone || 'N/A'}</span></div>
+                  <div>Location: <span className="font-extrabold text-slate-900">{selectedCar.city || 'N/A'}</span></div>
+                </div>
+              </div>
+
+              {/* Description */}
+              {selectedCar.description && (
+                <div>
+                  <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">
+                    Description
+                  </h4>
+                  <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100 whitespace-pre-line font-medium">
+                    {selectedCar.description}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between flex-wrap gap-3">
+              <button
+                onClick={() => handleDelete(selectedCar.id, selectedCar.title)}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold transition-all cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" /> Delete Listing
+              </button>
+
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`${newCarUrl}?id=${selectedCar.id}`}
+                  prefetch={false}
+                  onClick={() => setSelectedCar(null)}
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#0055FE] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20"
+                >
+                  <Edit className="w-4 h-4" /> Edit Car Listing
+                </Link>
+                <button
+                  onClick={() => setSelectedCar(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
