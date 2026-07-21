@@ -78,11 +78,15 @@ export async function middleware(request: NextRequest) {
     .eq('auth_user_id', user.id)
     .maybeSingle();
 
-  const ADMIN_LEVEL_ROLES = ['admin', 'content_manager', 'inspection_manager'];
-  const role = dbUser?.role || user.user_metadata?.role;
-  if (!role || !ADMIN_LEVEL_ROLES.includes(role)) {
-    const loginUrl = new URL('/admin/login', request.url);
-    loginUrl.searchParams.set('error', 'admin_only');
+  const PORTAL_ROLES = ['admin', 'content_manager', 'inspection_manager', 'seller', 'buyer'];
+  const role = dbUser?.role || user.user_metadata?.role || 'buyer';
+
+  if (role === 'buyer' && pathname.startsWith('/admin')) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  if (!PORTAL_ROLES.includes(role)) {
+    const loginUrl = new URL('/login', request.url);
     return NextResponse.redirect(loginUrl);
   }
 

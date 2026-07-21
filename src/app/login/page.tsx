@@ -48,7 +48,7 @@ export default function LoginPage() {
     async function checkSession() {
       if (typeof window !== "undefined") {
         const params = new URLSearchParams(window.location.search);
-        if (params.get("error") === "suspended") {
+        if (params.get("error")) {
           setChecking(false);
           return;
         }
@@ -60,11 +60,12 @@ export default function LoginPage() {
         if (session) {
           const metaRole = session.user?.user_metadata?.role;
           if (metaRole === "buyer") {
-            router.replace("/");
+            window.location.href = "/";
+            return;
           } else {
-            router.replace("/admin/dashboard");
+            window.location.href = "/admin/dashboard";
+            return;
           }
-          return;
         }
       } catch {
         // Continue to login page
