@@ -824,28 +824,33 @@ export const getAdminProfile = cache(async () => {
 });
 
 export async function getAdminInitialData() {
-  const profile = await getAdminProfile();
-  if (!profile) return null;
+  try {
+    const profile = await getAdminProfile();
+    if (!profile) return null;
 
-  if ((profile as any).isSuspended || (profile as any).status === 'suspended') {
+    if ((profile as any).isSuspended || (profile as any).status === 'suspended') {
+      return {
+        profile,
+        pendingRegistrations: 0,
+        suspended: true,
+      };
+    }
+
+    const serviceClient = createServiceRoleClient();
+    const { count } = await serviceClient
+      .from('registration_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending');
+
     return {
       profile,
-      pendingRegistrations: 0,
-      suspended: true,
+      pendingRegistrations: count ?? 0,
+      suspended: false,
     };
+  } catch (err) {
+    console.error('getAdminInitialData error:', err);
+    return null;
   }
-
-  const serviceClient = createServiceRoleClient();
-  const { count } = await serviceClient
-    .from('registration_requests')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'pending');
-
-  return {
-    profile,
-    pendingRegistrations: count ?? 0,
-    suspended: false,
-  };
 }
 
 export async function getAdminDashboardStats() {

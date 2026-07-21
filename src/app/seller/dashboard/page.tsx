@@ -28,19 +28,20 @@ export default function SellerDashboardPage() {
     async function loadSellerData() {
       try {
         const [carsRes, inquiriesRes] = await Promise.all([
-          fetchAdminCars(undefined, 1, 5),
-          fetchAdminInquiries(),
+          fetchAdminCars(undefined, 1, 5).catch(() => ({ data: [], total: 0, page: 1, totalPages: 1 })),
+          fetchAdminInquiries().catch(() => []),
         ]);
 
-        const totalViews = (carsRes.data || []).reduce((acc: number, c: any) => acc + (c.views_count || 0), 0);
+        const carsList = (carsRes as any)?.data || [];
+        const totalViews = carsList.reduce((acc: number, c: any) => acc + (c.views_count || 0), 0);
 
         setStats({
-          myCars: carsRes.total || 0,
+          myCars: (carsRes as any)?.total || carsList.length || 0,
           totalViews,
-          totalInquiries: inquiriesRes?.length || 0,
+          totalInquiries: Array.isArray(inquiriesRes) ? inquiriesRes.length : 0,
         });
 
-        setRecentCars(carsRes.data || []);
+        setRecentCars(carsList);
       } catch (err) {
         console.error('Failed to load seller metrics', err);
       } finally {
