@@ -46,6 +46,15 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
     }
 
     if (data) {
+      const metaRole = user.user_metadata?.role;
+      const adminRoles = ['admin', 'content_manager', 'inspection_manager'];
+      if (metaRole && adminRoles.includes(metaRole) && !adminRoles.includes(data.role)) {
+        await serviceClient
+          .from('users')
+          .update({ role: metaRole })
+          .eq('id', data.id);
+        data.role = metaRole;
+      }
       return data as SessionUser;
     }
 

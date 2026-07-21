@@ -36,11 +36,11 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  { label: "Dashboard",         href: "/admin/dashboard",    icon: LayoutDashboard, roles: ["admin", "content_manager", "inspection_manager"] },
-  { label: "Manage Cars",       href: "/admin/cars",         icon: Car,             roles: ["admin", "content_manager"] },
+  { label: "Dashboard",         href: "/admin/dashboard",    icon: LayoutDashboard, roles: ["admin", "content_manager", "inspection_manager", "seller", "buyer"] },
+  { label: "Manage Cars",       href: "/admin/cars",         icon: Car,             roles: ["admin", "content_manager", "seller"] },
   { label: "Manage Blogs",      href: "/admin/blogs",        icon: FileText,        roles: ["admin", "content_manager"] },
-  { label: "Inspections",       href: "/admin/inspections",  icon: ShieldCheck,     roles: ["admin", "inspection_manager"] },
-  { label: "Inquiries",         href: "/admin/inquiries",    icon: MessageSquare,   roles: ["admin", "inspection_manager"] },
+  { label: "Inspections",       href: "/admin/inspections",  icon: ShieldCheck,     roles: ["admin", "inspection_manager", "seller"] },
+  { label: "Inquiries",         href: "/admin/inquiries",    icon: MessageSquare,   roles: ["admin", "inspection_manager", "seller"] },
   { label: "Registrations",     href: "/admin/registrations",icon: UserPlus,        roles: ["admin"] },
   { label: "Manage Users",      href: "/admin/users",        icon: Users,           roles: ["admin"] },
   { label: "Dealers",           href: "/admin/dealers",      icon: Building2,       roles: ["admin"] },
@@ -51,6 +51,8 @@ const ROLE_LABELS: Record<string, string> = {
   admin: "Super Administrator",
   content_manager: "Content Manager",
   inspection_manager: "Inspection Manager",
+  seller: "Verified Seller",
+  buyer: "Registered Buyer",
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

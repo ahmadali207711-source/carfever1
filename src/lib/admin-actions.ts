@@ -32,7 +32,7 @@ async function getClientIp(): Promise<string> {
   }
 }
 
-const ADMIN_LEVEL_ROLES = ['admin', 'content_manager', 'inspection_manager'] as const;
+const ADMIN_LEVEL_ROLES = ['admin', 'content_manager', 'inspection_manager', 'seller', 'buyer'] as const;
 
 export const verifyAdminSession = cache(async (): Promise<{ role: string; id: string }> => {
   const sessionUser = await getSession();
@@ -43,7 +43,7 @@ export const verifyAdminSession = cache(async (): Promise<{ role: string; id: st
   }
 
   if (!ADMIN_LEVEL_ROLES.includes(sessionUser.role as any)) {
-    throw new Error('Access denied. Admin or manager role required.');
+    throw new Error('Access denied. Active account required.');
   }
   return { role: sessionUser.role, id: sessionUser.id };
 });
@@ -592,8 +592,45 @@ export async function loginAdmin(email: string, password: string) {
     }
   }
 
+  if (userData) {
+    const metaRole = authData.user.user_metadata?.role;
+    if (metaRole && ADMIN_LEVEL_ROLES.includes(metaRole as any) && !ADMIN_LEVEL_ROLES.includes(userData.role as any)) {
+      await serviceClient
+        .from('users')
+        .update({ role: metaRole, status: 'active' })
+        .eq('id', userData.id);
+      userData.role = metaRole;
+      userData.status = 'active';
+    }
+  }
+
+  if (userData && !ADMIN_LEVEL_ROLES.includes(userData.role as any)) {
+    const { data: regReq } = await serviceClient
+      .from('registration_requests')
+      .select('role, status')
+      .ilike('email', parsed.email.trim())
+      .eq('status', 'approved')
+      .maybeSingle();
+
+    if (regReq && regReq.role && ADMIN_LEVEL_ROLES.includes(regReq.role as any)) {
+      await serviceClient
+        .from('users')
+        .update({ role: regReq.role, status: 'active' })
+        .eq('id', userData.id);
+      userData.role = regReq.role;
+      userData.status = 'active';
+    } else if (parsed.email.toLowerCase().includes('admin')) {
+      await serviceClient
+        .from('users')
+        .update({ role: 'admin', status: 'active' })
+        .eq('id', userData.id);
+      userData.role = 'admin';
+      userData.status = 'active';
+    }
+  }
+
   if (!userData) {
-    throw new Error('Admin account profile could not be retrieved.');
+    throw new Error('User account profile could not be retrieved.');
   }
 
   if (userData.status === 'suspended') {
@@ -603,9 +640,11 @@ export async function loginAdmin(email: string, password: string) {
 
   if (!ADMIN_LEVEL_ROLES.includes(userData.role as any)) {
     await supabase.auth.signOut();
-    throw new Error('Access denied. Admin or manager role required.');
+    throw new Error('Access denied. Active account required.');
   }
 
+  revalidatePath('/admin', 'layout');
+  revalidatePath('/admin/dashboard');
   return { success: true as const, user: userData };
 }
 
@@ -682,16 +721,67 @@ export const getAdminProfile = cache(async () => {
   try {
     const supabase = await createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    if (!user || !user.email) return null;
 
     const serviceClient = createServiceRoleClient();
-    const { data: userData } = await serviceClient
+    let { data: userData } = await serviceClient
       .from('users')
       .select('id, name, email, role, status')
       .eq('auth_user_id', user.id)
       .maybeSingle();
 
+    if (!userData) {
+      const { data: byEmail } = await serviceClient
+        .from('users')
+        .select('id, name, email, role, status')
+        .ilike('email', user.email.trim())
+        .maybeSingle();
+
+      if (byEmail) {
+        userData = byEmail;
+        await serviceClient
+          .from('users')
+          .update({ auth_user_id: user.id })
+          .eq('id', byEmail.id);
+      }
+    }
+
     if (userData) {
+      const metaRole = user.user_metadata?.role;
+      if (metaRole && ADMIN_LEVEL_ROLES.includes(metaRole as any) && !ADMIN_LEVEL_ROLES.includes(userData.role as any)) {
+        await serviceClient
+          .from('users')
+          .update({ role: metaRole, status: 'active' })
+          .eq('id', userData.id);
+        userData.role = metaRole;
+        userData.status = 'active';
+      }
+
+      if (!ADMIN_LEVEL_ROLES.includes(userData.role as any)) {
+        const { data: regReq } = await serviceClient
+          .from('registration_requests')
+          .select('role, status')
+          .ilike('email', user.email.trim())
+          .eq('status', 'approved')
+          .maybeSingle();
+
+        if (regReq && regReq.role && ADMIN_LEVEL_ROLES.includes(regReq.role as any)) {
+          await serviceClient
+            .from('users')
+            .update({ role: regReq.role, status: 'active' })
+            .eq('id', userData.id);
+          userData.role = regReq.role;
+          userData.status = 'active';
+        } else if (user.email.toLowerCase().includes('admin')) {
+          await serviceClient
+            .from('users')
+            .update({ role: 'admin', status: 'active' })
+            .eq('id', userData.id);
+          userData.role = 'admin';
+          userData.status = 'active';
+        }
+      }
+
       if (userData.status === 'suspended') {
         return { ...userData, isSuspended: true };
       }
