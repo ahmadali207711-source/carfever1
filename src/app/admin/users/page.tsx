@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { updateUserStatus, fetchAllUsers } from '@/lib/admin-actions';
+import { updateUserStatus, fetchAllUsers, getAdminProfile } from '@/lib/admin-actions';
 import type { DbUser, UserStatus, UserRole } from '@/lib/supabase/types';
 
 const STATUS_STYLE: Record<UserStatus, string> = {
@@ -177,6 +177,11 @@ export default function UsersPage() {
   const [totalUsers, setTotalUsers] = useState(0);
   const [togglingId,  setTogglingId]  = useState<string | null>(null);
   const [profileUser, setProfileUser] = useState<DbUser | null>(null);
+  const [currentAdmin, setCurrentAdmin] = useState<any>(null);
+
+  useEffect(() => {
+    getAdminProfile().then(p => setCurrentAdmin(p)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedSearch(searchQuery); setPage(1); }, 400);
@@ -339,11 +344,15 @@ export default function UsersPage() {
 
               {!loading && users.map(user => {
                 const isToggling = togglingId === user.id;
+                const isSelf = currentAdmin && (
+                  user.id === currentAdmin.id ||
+                  (user.email && currentAdmin.email && user.email.toLowerCase() === currentAdmin.email.toLowerCase())
+                );
 
                 return (
                   <tr
                     key={user.id}
-                    className="hover:bg-slate-50/70 transition-colors"
+                    className={`hover:bg-slate-50/70 transition-colors ${isSelf ? 'bg-blue-50/30' : ''}`}
                   >
                     <td className="py-4 px-5">
                       <div className="flex items-center gap-3">
@@ -359,9 +368,16 @@ export default function UsersPage() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-900 truncate max-w-[140px]">
-                            {user.name}
-                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-xs font-bold text-slate-900 truncate max-w-[140px]">
+                              {user.name}
+                            </p>
+                            {isSelf && (
+                              <Badge className="bg-blue-100 text-[#0055FE] border-blue-200 text-[9px] font-extrabold px-1.5 py-0">
+                                You
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-[10px] text-slate-400 font-mono truncate max-w-[140px]">
                             {user.id.slice(0, 8)}…
                           </p>
@@ -413,14 +429,28 @@ export default function UsersPage() {
                         </button>
 
                         <button
-                          onClick={() => handleToggleStatus(user)}
-                          disabled={isToggling}
-                          className={`p-2 rounded-xl border transition-all cursor-pointer disabled:opacity-50 ${
-                            user.status === 'active'
-                              ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
-                              : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
+                          onClick={() => {
+                            if (isSelf) {
+                              toast.info('You cannot suspend your own active admin account.');
+                              return;
+                            }
+                            handleToggleStatus(user);
+                          }}
+                          disabled={isToggling || isSelf}
+                          className={`p-2 rounded-xl border transition-all ${
+                            isSelf
+                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50'
+                              : user.status === 'active'
+                              ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 cursor-pointer'
+                              : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 cursor-pointer'
                           }`}
-                          title={user.status === 'active' ? 'Suspend User' : 'Activate User'}
+                          title={
+                            isSelf
+                              ? 'You cannot suspend your own account'
+                              : user.status === 'active'
+                              ? 'Suspend User'
+                              : 'Activate User'
+                          }
                         >
                           {isToggling ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />

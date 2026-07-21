@@ -21,11 +21,29 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
     if (authError || !user?.email) return null;
 
     const serviceClient = createServiceRoleClient();
-    const { data } = await serviceClient
+    let { data } = await serviceClient
       .from('users')
       .select('id, auth_user_id, name, email, role, status')
       .eq('auth_user_id', user.id)
       .maybeSingle();
+
+    if (!data && user.email) {
+      const { data: byEmail } = await serviceClient
+        .from('users')
+        .select('id, auth_user_id, name, email, role, status')
+        .eq('email', user.email)
+        .maybeSingle();
+
+      if (byEmail) {
+        data = byEmail;
+        if (!byEmail.auth_user_id) {
+          await serviceClient
+            .from('users')
+            .update({ auth_user_id: user.id })
+            .eq('id', byEmail.id);
+        }
+      }
+    }
 
     if (data) {
       return data as SessionUser;

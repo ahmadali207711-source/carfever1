@@ -16,8 +16,6 @@ import {
 import {
   Save,
   Loader2,
-  Eye,
-  EyeOff,
   RefreshCw,
   Phone,
   Share2,
@@ -27,7 +25,6 @@ import {
   Clock,
   Sparkles,
   MessageCircle,
-  CreditCard,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { saveSiteSettings, fetchAdminSettings } from '@/lib/admin-actions';
@@ -57,11 +54,6 @@ const SETTING_KEYS = [
   'social_youtube',
   'social_linkedin',
   'whatsapp_number',
-
-  // Integrations & Platform
-  'currency',
-  'stripe_public_key',
-  'google_analytics_id',
 ] as const;
 
 type SettingKey = (typeof SETTING_KEYS)[number];
@@ -89,10 +81,6 @@ const DEFAULTS: SettingsState = {
   social_youtube: 'https://youtube.com/@carfeverpk',
   social_linkedin: 'https://linkedin.com/company/carfeverpk',
   whatsapp_number: '+923001234567',
-
-  currency: 'PKR',
-  stripe_public_key: '',
-  google_analytics_id: '',
 };
 
 const inputCls = "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-[#0055FE] text-xs rounded-xl shadow-xs";
@@ -101,8 +89,7 @@ export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<SettingsState>(DEFAULTS);
   const [fetching, setFetching] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showStripeKey, setShowStripeKey] = useState(false);
-  const [activeTab, setActiveTab] = useState<'all' | 'contact' | 'social' | 'landing' | 'integrations'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'contact' | 'social' | 'landing'>('all');
 
   const loadSettings = useCallback(async () => {
     setFetching(true);
@@ -155,7 +142,7 @@ export default function AdminSettingsPage() {
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Site & Landing Page Settings</h1>
           <p className="text-xs font-semibold text-slate-500 mt-1">
-            Manage all contact information, social links, landing page content, and platform integrations.
+            Manage all contact information, social links, and landing page content.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -188,7 +175,6 @@ export default function AdminSettingsPage() {
           { id: 'contact', label: 'Contact & Location', icon: Phone },
           { id: 'social', label: 'Social Media', icon: Share2 },
           { id: 'landing', label: 'Landing Page & Branding', icon: Layout },
-          { id: 'integrations', label: 'Integrations', icon: CreditCard },
         ].map(tab => {
           const Icon = tab.icon;
           return (
@@ -542,82 +528,6 @@ export default function AdminSettingsPage() {
                       value={settings.footer_copyright}
                       onChange={handleChange('footer_copyright')}
                       placeholder="© 2026 Car Fever Pakistan. All Rights Reserved."
-                      className={inputCls}
-                    />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* 4. Integrations */}
-        {(activeTab === 'all' || activeTab === 'integrations') && (
-          <Card className="bg-white border-slate-200/80 shadow-xs">
-            <CardHeader className="border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                  <CreditCard className="w-4 h-4" />
-                </div>
-                <div>
-                  <CardTitle className="text-slate-900 text-base font-bold">Marketplace & API Integrations</CardTitle>
-                  <CardDescription className="text-xs font-medium text-slate-500">Configure marketplace currency and API service keys.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-4 pt-4">
-              {fetching ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {[1, 2, 3].map(i => <Skeleton key={i} />)}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="currency" className="text-xs font-bold text-slate-700">
-                      Default Currency Code
-                    </Label>
-                    <Input
-                      id="currency"
-                      value={settings.currency}
-                      onChange={handleChange('currency')}
-                      placeholder="PKR"
-                      className={inputCls}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="stripe_public_key" className="text-xs font-bold text-slate-700">
-                      Stripe Publishable Key
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="stripe_public_key"
-                        type={showStripeKey ? 'text' : 'password'}
-                        value={settings.stripe_public_key}
-                        onChange={handleChange('stripe_public_key')}
-                        placeholder="pk_test_…"
-                        className={`${inputCls} pr-10`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowStripeKey(v => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                      >
-                        {showStripeKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="google_analytics_id" className="text-xs font-bold text-slate-700">
-                      Google Analytics ID
-                    </Label>
-                    <Input
-                      id="google_analytics_id"
-                      value={settings.google_analytics_id}
-                      onChange={handleChange('google_analytics_id')}
-                      placeholder="G-XXXXXXXXXX"
                       className={inputCls}
                     />
                   </div>

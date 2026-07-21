@@ -423,6 +423,30 @@ export async function updateUserStatus(
 
   const supabase = createServiceRoleClient();
 
+  const { data: targetUser } = await supabase
+    .from('users')
+    .select('id, auth_user_id, email')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (targetUser) {
+    let targetAuthId = targetUser.auth_user_id;
+
+    if (!targetAuthId && targetUser.email) {
+      const { data: listData } = await supabase.auth.admin.listUsers();
+      const match = listData?.users?.find(u => u.email?.toLowerCase() === targetUser.email.toLowerCase());
+      if (match) targetAuthId = match.id;
+    }
+
+    if (targetAuthId) {
+      if (status === 'suspended') {
+        await supabase.auth.admin.updateUserById(targetAuthId, { ban_duration: '876000h' });
+      } else if (status === 'active') {
+        await supabase.auth.admin.updateUserById(targetAuthId, { ban_duration: 'none' });
+      }
+    }
+  }
+
   const { error } = await supabase
     .from('users')
     .update({
@@ -489,6 +513,22 @@ export async function loginAdmin(email: string, password: string) {
     .select('id, name, email, role, status')
     .eq('auth_user_id', authData.user.id)
     .maybeSingle();
+
+  if (!userData && authData.user.email) {
+    const { data: byEmail } = await serviceClient
+      .from('users')
+      .select('id, name, email, role, status')
+      .eq('email', authData.user.email)
+      .maybeSingle();
+
+    if (byEmail) {
+      userData = byEmail;
+      await serviceClient
+        .from('users')
+        .update({ auth_user_id: authData.user.id })
+        .eq('id', byEmail.id);
+    }
+  }
 
   if (!userData) {
     // Auto-sync profile for authenticated admin account
