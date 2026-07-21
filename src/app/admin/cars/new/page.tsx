@@ -13,11 +13,16 @@ import { createCar, updateCar, uploadImage } from '@/lib/admin-actions';
 import { convertMultipleToWebP } from '@/lib/image-utils';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function EditCarPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
+
+  const isSeller = pathname.startsWith('/seller');
+  const fallbackBackUrl = isSeller ? '/seller/cars' : '/admin/cars';
   
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(!!id);
@@ -79,7 +84,7 @@ export default function EditCarPage() {
       }
     } catch (error) {
       toast.error('Failed to fetch car details');
-      router.push('/admin/cars');
+      router.push(fallbackBackUrl);
     } finally {
       setFetching(false);
     }
@@ -152,11 +157,12 @@ export default function EditCarPage() {
       if (id) {
         await updateCar(id, dataToSave);
         toast.success('Car updated successfully');
+        router.push(isSeller ? `/seller/cars/${id}` : `/admin/cars/${id}`);
       } else {
         await createCar(dataToSave);
         toast.success('Car created successfully');
+        router.push(fallbackBackUrl);
       }
-      router.push('/admin/cars');
     } catch (error: any) {
       toast.error(error.message || 'Failed to save car');
     } finally {

@@ -160,6 +160,9 @@ export async function submitCarListing(formData: {
   fuelType: string;
   transmission: string;
   engineCapacity: string;
+  bodyType?: string;
+  exteriorColor?: string;
+  interiorColor?: string;
   city: string;
   price: string;
   sellerName: string;
@@ -196,8 +199,14 @@ export async function submitCarListing(formData: {
       price: pricePKR,
       currency: 'PKR',
       mileage: parsed.mileage ? parseInt(parsed.mileage) : null,
+      engine: parsed.engineCapacity ? `${parsed.engineCapacity} cc` : null,
+      engine_capacity: parsed.engineCapacity ? `${parsed.engineCapacity} cc` : null,
       transmission: parsed.transmission.charAt(0).toUpperCase() + parsed.transmission.slice(1),
       fuel_type: parsed.fuelType.charAt(0).toUpperCase() + parsed.fuelType.slice(1),
+      body_type: parsed.bodyType || 'Sedan',
+      exterior_color: parsed.exteriorColor || null,
+      interior_color: parsed.interiorColor || null,
+      color: parsed.exteriorColor || null,
       city: parsed.city,
       description: parsed.description || `${title} for sale.`,
       images: imageUrls,

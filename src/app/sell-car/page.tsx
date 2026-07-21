@@ -80,6 +80,28 @@ const PAKISTAN_CITIES = [
   "Other City",
 ];
 
+const EXTERIOR_COLORS = [
+  "White",
+  "Black",
+  "Silver",
+  "Grey",
+  "Red",
+  "Blue",
+  "Pearl White",
+  "Bronze",
+  "Other Color",
+];
+
+const INTERIOR_COLORS = [
+  "Black",
+  "Beige",
+  "Grey",
+  "Red / Leather",
+  "Tan",
+  "Brown",
+  "Other Color",
+];
+
 const CAR_FEATURES = [
   "Sunroof / Moonroof",
   "Navigation / Touchscreen",
@@ -121,6 +143,10 @@ export default function SellCarPage() {
     assembly: "Local",
     bodyType: "Sedan",
     engineCapacity: "",
+    exteriorColor: "",
+    customExteriorColor: "",
+    interiorColor: "",
+    customInteriorColor: "",
     city: "",
     customCity: "",
     price: "",
@@ -257,6 +283,9 @@ export default function SellCarPage() {
         }
       }
 
+      const finalExtColor = formData.exteriorColor === "Other Color" ? formData.customExteriorColor.trim() : formData.exteriorColor;
+      const finalIntColor = formData.interiorColor === "Other Color" ? formData.customInteriorColor.trim() : formData.interiorColor;
+
       const result = await submitCarListing({
         make: finalMake,
         model: finalModel,
@@ -265,6 +294,9 @@ export default function SellCarPage() {
         fuelType: formData.fuelType,
         transmission: formData.transmission,
         engineCapacity: formData.engineCapacity,
+        bodyType: formData.bodyType,
+        exteriorColor: finalExtColor,
+        interiorColor: finalIntColor,
         city: finalCity,
         price: formData.price,
         sellerName: formData.sellerName,
@@ -552,6 +584,66 @@ export default function SellCarPage() {
                       <option value="Coupe">Coupe</option>
                       <option value="Van">Van / MPV</option>
                     </select>
+                  </div>
+
+                  {/* Exterior Color */}
+                  <div>
+                    <label className={labelClass}>
+                      <span>Exterior Color</span>
+                    </label>
+                    <select
+                      name="exteriorColor"
+                      value={formData.exteriorColor}
+                      onChange={handleInputChange}
+                      className={selectClass}
+                    >
+                      <option value="">Select Exterior Color (Optional)</option>
+                      {EXTERIOR_COLORS.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                    {formData.exteriorColor === "Other Color" && (
+                      <input
+                        type="text"
+                        name="customExteriorColor"
+                        placeholder="Type custom exterior color (e.g. Midnight Blue)"
+                        value={formData.customExteriorColor}
+                        onChange={handleInputChange}
+                        className={`${inputClass} mt-2`}
+                      />
+                    )}
+                  </div>
+
+                  {/* Interior Color */}
+                  <div>
+                    <label className={labelClass}>
+                      <span>Interior Color</span>
+                    </label>
+                    <select
+                      name="interiorColor"
+                      value={formData.interiorColor}
+                      onChange={handleInputChange}
+                      className={selectClass}
+                    >
+                      <option value="">Select Interior Color (Optional)</option>
+                      {INTERIOR_COLORS.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                    {formData.interiorColor === "Other Color" && (
+                      <input
+                        type="text"
+                        name="customInteriorColor"
+                        placeholder="Type custom interior color (e.g. Almond Beige)"
+                        value={formData.customInteriorColor}
+                        onChange={handleInputChange}
+                        className={`${inputClass} mt-2`}
+                      />
+                    )}
                   </div>
 
                   {/* Fuel Type Pills */}

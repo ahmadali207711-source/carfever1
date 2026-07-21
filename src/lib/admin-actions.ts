@@ -256,6 +256,24 @@ export async function uploadImage(file: File): Promise<string> {
   return data.publicUrl;
 }
 
+export async function deleteStorageImage(imageUrl: string): Promise<boolean> {
+  await verifyAdminSession();
+  if (!imageUrl || !imageUrl.includes('car-images')) return false;
+  try {
+    const supabase = createServiceRoleClient();
+    const parts = imageUrl.split('car-images/');
+    if (parts.length > 1) {
+      const filePath = parts[1];
+      const { error } = await supabase.storage.from('car-images').remove([filePath]);
+      if (error) console.error('Storage remove error:', error);
+      return !error;
+    }
+  } catch (err) {
+    console.error('deleteStorageImage error:', err);
+  }
+  return false;
+}
+
 // ============================================================================
 // SEO SETTINGS
 // ============================================================================
