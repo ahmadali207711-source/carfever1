@@ -214,7 +214,7 @@ export async function deleteBlog(id: string) {
 }
 
 export async function uploadImage(file: File): Promise<string> {
-  await verifyContentManagerAccess();
+  await verifyAdminSession();
 
   const ip = await getClientIp();
   const { allowed } = rateLimit('upload', ip);
@@ -222,15 +222,17 @@ export async function uploadImage(file: File): Promise<string> {
 
   const supabase = createServiceRoleClient();
 
-  const ext = file.name.split('.').pop() || 'jpg';
-  const filename = `admin/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const isWebP = file.type === 'image/webp' || file.name.endsWith('.webp');
+  const ext = isWebP ? 'webp' : (file.name.split('.').pop() || 'jpg');
+  const contentType = isWebP ? 'image/webp' : (file.type || 'image/jpeg');
+  const filename = `cars/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
   const { error } = await supabase.storage
     .from('car-images')
-    .upload(filename, buffer, { contentType: file.type || 'image/jpeg', upsert: true });
+    .upload(filename, buffer, { contentType, upsert: true });
 
   if (error) throw new Error(`Image upload failed: ${error.message}`);
 

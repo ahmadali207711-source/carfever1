@@ -30,6 +30,7 @@ import {
   FileText,
 } from "lucide-react";
 import { submitCarListing } from "@/lib/server-actions";
+import { convertMultipleToWebP } from "@/lib/image-utils";
 
 const POPULAR_BRANDS = [
   "Toyota",
@@ -179,12 +180,13 @@ export default function SellCarPage() {
     });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const filesArray = Array.from(e.target.files);
-      const newImages = filesArray.map((file) => URL.createObjectURL(file));
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const rawFiles = Array.from(e.target.files);
+      const webpFiles = await convertMultipleToWebP(rawFiles);
+      const newImages = webpFiles.map((file) => URL.createObjectURL(file));
       setUploadedImages((prev) => [...prev, ...newImages]);
-      setUploadedFiles((prev) => [...prev, ...filesArray]);
+      setUploadedFiles((prev) => [...prev, ...webpFiles]);
     }
   };
 
@@ -192,14 +194,15 @@ export default function SellCarPage() {
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
-    if (e.dataTransfer.files) {
-      const filesArray = Array.from(e.dataTransfer.files);
-      const imageFiles = filesArray.filter((file) => file.type.startsWith("image/"));
-      const newImages = imageFiles.map((file) => URL.createObjectURL(file));
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const rawFiles = Array.from(e.dataTransfer.files);
+      const imageFiles = rawFiles.filter((file) => file.type.startsWith("image/"));
+      const webpFiles = await convertMultipleToWebP(imageFiles);
+      const newImages = webpFiles.map((file) => URL.createObjectURL(file));
       setUploadedImages((prev) => [...prev, ...newImages]);
-      setUploadedFiles((prev) => [...prev, ...imageFiles]);
+      setUploadedFiles((prev) => [...prev, ...webpFiles]);
     }
   };
 

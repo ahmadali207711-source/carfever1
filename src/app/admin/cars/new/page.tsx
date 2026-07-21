@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Save, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { createCar, updateCar, uploadImage } from '@/lib/admin-actions';
+import { convertMultipleToWebP } from '@/lib/image-utils';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 
@@ -99,11 +100,13 @@ export default function EditCarPage() {
 
     setUploading(true);
     try {
-      for (let i = 0; i < files.length; i++) {
-        const url = await uploadImage(files[i]);
+      const rawFiles = Array.from(files);
+      const webpFiles = await convertMultipleToWebP(rawFiles);
+      for (let i = 0; i < webpFiles.length; i++) {
+        const url = await uploadImage(webpFiles[i]);
         setImages(prev => [...prev, url]);
       }
-      toast.success('Images uploaded successfully');
+      toast.success('Images converted to WebP and uploaded');
     } catch (error) {
       toast.error('Failed to upload images');
     } finally {
