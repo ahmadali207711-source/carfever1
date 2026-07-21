@@ -694,65 +694,74 @@ function buildPagination(page: number, pageSize: number, total: number): { page:
 export async function fetchAdminCars(search?: string, page: number = 1, pageSize: number = 15) {
   await verifyAdminSession();
   const supabase = createServiceRoleClient();
+  const safePage = Math.max(1, page);
+  const safePageSize = Math.min(Math.max(1, pageSize), 100);
 
   let countQuery = supabase.from('cars').select('*', { count: 'exact', head: true });
-  if (search) countQuery = countQuery.ilike('title', `%${search}%`);
-  const { count } = await countQuery;
-  const total = count ?? 0;
-  const { page: safePage, totalPages } = buildPagination(page, pageSize, total);
-
-  let q = supabase
+  let dataQuery = supabase
     .from('cars')
     .select('id, title, make, model, year, price, status, images, created_at')
     .order('created_at', { ascending: false })
-    .range((safePage - 1) * pageSize, safePage * pageSize - 1);
+    .range((safePage - 1) * safePageSize, safePage * safePageSize - 1);
 
-  if (search) q = q.ilike('title', `%${search}%`);
-  const { data, error } = await q;
+  if (search) {
+    countQuery = countQuery.ilike('title', `%${search}%`);
+    dataQuery = dataQuery.ilike('title', `%${search}%`);
+  }
+
+  const [{ count }, { data, error }] = await Promise.all([countQuery, dataQuery]);
+  const total = count ?? 0;
+  const totalPages = Math.ceil(total / safePageSize);
+
   if (error) handleError(error, 'Failed to fetch cars');
-  return { data: data ?? [], total, page: safePage, pageSize, totalPages };
+  return { data: data ?? [], total, page: safePage, pageSize: safePageSize, totalPages };
 }
 
 export async function fetchAdminBlogs(search?: string, page: number = 1, pageSize: number = 15) {
   await verifyAdminSession();
   const supabase = createServiceRoleClient();
+  const safePage = Math.max(1, page);
+  const safePageSize = Math.min(Math.max(1, pageSize), 100);
 
   let countQuery = supabase.from('blogs').select('*', { count: 'exact', head: true });
-  if (search) countQuery = countQuery.ilike('title', `%${search}%`);
-  const { count } = await countQuery;
-  const total = count ?? 0;
-  const { page: safePage, totalPages } = buildPagination(page, pageSize, total);
-
-  let q = supabase
+  let dataQuery = supabase
     .from('blogs')
     .select('id, title, slug, category, published, created_at, author_name')
     .order('created_at', { ascending: false })
-    .range((safePage - 1) * pageSize, safePage * pageSize - 1);
+    .range((safePage - 1) * safePageSize, safePage * safePageSize - 1);
 
-  if (search) q = q.ilike('title', `%${search}%`);
-  const { data, error } = await q;
+  if (search) {
+    countQuery = countQuery.ilike('title', `%${search}%`);
+    dataQuery = dataQuery.ilike('title', `%${search}%`);
+  }
+
+  const [{ count }, { data, error }] = await Promise.all([countQuery, dataQuery]);
+  const total = count ?? 0;
+  const totalPages = Math.ceil(total / safePageSize);
+
   if (error) handleError(error, 'Failed to fetch blogs');
-  return { data: data ?? [], total, page: safePage, pageSize, totalPages };
+  return { data: data ?? [], total, page: safePage, pageSize: safePageSize, totalPages };
 }
 
 export async function fetchAdminInspections(page: number = 1, pageSize: number = 15) {
   await verifyAdminSession();
   const supabase = createServiceRoleClient();
+  const safePage = Math.max(1, page);
+  const safePageSize = Math.min(Math.max(1, pageSize), 100);
 
-  const { count } = await supabase
-    .from('inspections')
-    .select('*', { count: 'exact', head: true });
-  const total = count ?? 0;
-  const { page: safePage, totalPages } = buildPagination(page, pageSize, total);
-
-  const { data, error } = await supabase
+  const countQuery = supabase.from('inspections').select('*', { count: 'exact', head: true });
+  const dataQuery = supabase
     .from('inspections')
     .select('*, car:cars(title, make, year)')
     .order('created_at', { ascending: false })
-    .range((safePage - 1) * pageSize, safePage * pageSize - 1);
+    .range((safePage - 1) * safePageSize, safePage * safePageSize - 1);
+
+  const [{ count }, { data, error }] = await Promise.all([countQuery, dataQuery]);
+  const total = count ?? 0;
+  const totalPages = Math.ceil(total / safePageSize);
 
   if (error) handleError(error, 'Failed to fetch inspections');
-  return { data: data ?? [], total, page: safePage, pageSize, totalPages };
+  return { data: data ?? [], total, page: safePage, pageSize: safePageSize, totalPages };
 }
 
 export async function fetchAdminSettings() {

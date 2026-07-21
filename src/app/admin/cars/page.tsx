@@ -92,7 +92,7 @@ export default function AdminCarsPage() {
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Car Listings</h1>
           <p className="text-xs font-semibold text-slate-500 mt-1">Manage, approve, or remove car inventory.</p>
         </div>
-        <Link href="/admin/cars/new"
+        <Link href="/admin/cars/new" prefetch={false}
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0055FE] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm shadow-blue-500/20">
           <Plus className="w-4 h-4" /> Add New Car
         </Link>
@@ -157,7 +157,7 @@ export default function AdminCarsPage() {
                         <>
                           <div onClick={() => setMenu(null)} className="fixed inset-0 z-20" />
                           <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-xl z-30 overflow-hidden py-1">
-                            <Link href={`/admin/cars/new?id=${car.id}`} onClick={() => setMenu(null)}
+                            <Link href={`/admin/cars/new?id=${car.id}`} prefetch={false} onClick={() => setMenu(null)}
                               className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
                               <Edit className="w-3.5 h-3.5 text-slate-400" /> Edit
                             </Link>
