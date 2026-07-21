@@ -728,7 +728,7 @@ export async function fetchAdminBlogs(search?: string, page: number = 1, pageSiz
 
   let query = supabase
     .from('blogs')
-    .select('id, title, slug, category, published, created_at, author_name', { count: 'exact' })
+    .select('id, title, slug, category_id, status, published_at, created_at, author_name', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range((safePage - 1) * safePageSize, safePage * safePageSize - 1);
 
@@ -739,9 +739,15 @@ export async function fetchAdminBlogs(search?: string, page: number = 1, pageSiz
   const { data, count, error } = await query;
   if (error) handleError(error, 'Failed to fetch blogs');
 
+  const formattedData = (data || []).map((b: any) => ({
+    ...b,
+    category: b.category || b.category_id || 'Uncategorized',
+    published: b.status === 'published' || !!b.published_at,
+  }));
+
   const total = count ?? 0;
   const totalPages = Math.ceil(total / safePageSize);
-  return { data: data ?? [], total, page: safePage, pageSize: safePageSize, totalPages };
+  return { data: formattedData, total, page: safePage, pageSize: safePageSize, totalPages };
 }
 
 export async function fetchAdminInspections(page: number = 1, pageSize: number = 15) {
@@ -752,7 +758,7 @@ export async function fetchAdminInspections(page: number = 1, pageSize: number =
 
   const query = supabase
     .from('inspections')
-    .select('*, car:cars(title, year)', { count: 'exact' })
+    .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range((safePage - 1) * safePageSize, safePage * safePageSize - 1);
 

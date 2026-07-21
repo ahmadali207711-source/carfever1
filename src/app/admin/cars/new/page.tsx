@@ -168,72 +168,75 @@ export default function EditCarPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-3">
           <Link href="/admin/cars" prefetch={false}>
-            <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
+            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
-          <h2 className="text-2xl font-bold tracking-tight text-white">
-            {id ? 'Edit Car' : 'Add New Car'}
-          </h2>
+          <div>
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              {id ? 'Edit Car Listing' : 'Add New Car'}
+            </h1>
+            <p className="text-xs font-semibold text-slate-500 mt-0.5">Enter specs, features, and upload high-res photos.</p>
+          </div>
         </div>
-        <Button type="submit" form="car-form" disabled={loading} className="bg-red-600 hover:bg-red-700 text-white">
+        <Button type="submit" form="car-form" disabled={loading} className="bg-[#0055FE] hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm shadow-blue-500/20 text-xs px-5 py-2.5">
           {loading ? 'Saving...' : (
             <>
               <Save className="w-4 h-4 mr-2" />
-              Save Car
+              Save Car Listing
             </>
           )}
         </Button>
       </div>
 
-      <form id="car-form" onSubmit={handleSubmit} className="space-y-8">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 space-y-6">
-          <h3 className="text-lg font-medium text-white border-b border-zinc-800 pb-2">Basic Information</h3>
+      <form id="car-form" onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-6 shadow-xs">
+          <h3 className="text-base font-extrabold text-slate-900 border-b border-slate-100 pb-3">Basic Information</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-zinc-300">Listing Title <span className="text-red-500">*</span></Label>
-              <Input id="title" name="title" required value={formData.title} onChange={handleChange} className="bg-zinc-950 border-zinc-800" placeholder="e.g. 2024 Porsche 911 GT3" />
+              <Label htmlFor="title" className="text-xs font-bold text-slate-700">Listing Title <span className="text-rose-500">*</span></Label>
+              <Input id="title" name="title" required value={formData.title} onChange={handleChange} className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" placeholder="e.g. 2024 Porsche 911 GT3" />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="price" className="text-zinc-300">Price (USD) <span className="text-red-500">*</span></Label>
-              <Input id="price" name="price" type="number" required value={formData.price} onChange={handleChange} className="bg-zinc-950 border-zinc-800" placeholder="e.g. 185000" />
+              <Label htmlFor="price" className="text-xs font-bold text-slate-700">Price (PKR / USD) <span className="text-rose-500">*</span></Label>
+              <Input id="price" name="price" type="number" required value={formData.price} onChange={handleChange} className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" placeholder="e.g. 185000" />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="make" className="text-zinc-300">Make <span className="text-red-500">*</span></Label>
-              <Input id="make" name="make" required value={formData.make} onChange={handleChange} className="bg-zinc-950 border-zinc-800" placeholder="e.g. Porsche" />
+              <Label htmlFor="make" className="text-xs font-bold text-slate-700">Make / Brand <span className="text-rose-500">*</span></Label>
+              <Input id="make" name="make" required value={formData.make} onChange={handleChange} className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" placeholder="e.g. Porsche" />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="model" className="text-zinc-300">Model <span className="text-red-500">*</span></Label>
-              <Input id="model" name="model" required value={formData.model} onChange={handleChange} className="bg-zinc-950 border-zinc-800" placeholder="e.g. 911 GT3" />
+              <Label htmlFor="model" className="text-xs font-bold text-slate-700">Model <span className="text-rose-500">*</span></Label>
+              <Input id="model" name="model" required value={formData.model} onChange={handleChange} className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" placeholder="e.g. 911 GT3" />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="year" className="text-zinc-300">Year <span className="text-red-500">*</span></Label>
-              <Input id="year" name="year" type="number" required value={formData.year} onChange={handleChange} className="bg-zinc-950 border-zinc-800" placeholder="e.g. 2024" />
+              <Label htmlFor="year" className="text-xs font-bold text-slate-700">Year <span className="text-rose-500">*</span></Label>
+              <Input id="year" name="year" type="number" required value={formData.year} onChange={handleChange} className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" placeholder="e.g. 2024" />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="mileage" className="text-zinc-300">Mileage <span className="text-red-500">*</span></Label>
-              <Input id="mileage" name="mileage" type="number" required value={formData.mileage} onChange={handleChange} className="bg-zinc-950 border-zinc-800" placeholder="e.g. 1500" />
+              <Label htmlFor="mileage" className="text-xs font-bold text-slate-700">Mileage (KM) <span className="text-rose-500">*</span></Label>
+              <Input id="mileage" name="mileage" type="number" required value={formData.mileage} onChange={handleChange} className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" placeholder="e.g. 1500" />
             </div>
           </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 space-y-6">
-          <h3 className="text-lg font-medium text-white border-b border-zinc-800 pb-2">Specifications</h3>
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-6 shadow-xs">
+          <h3 className="text-base font-extrabold text-slate-900 border-b border-slate-100 pb-3">Specifications</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
-              <Label className="text-zinc-300">Transmission</Label>
+              <Label className="text-xs font-bold text-slate-700">Transmission</Label>
               <Select value={formData.transmission || 'Automatic'} onValueChange={(val) => handleSelectChange('transmission', String(val))}>
-                <SelectTrigger className="bg-zinc-950 border-zinc-800">
+                <SelectTrigger className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]">
                   <SelectValue placeholder="Select transmission" />
                 </SelectTrigger>
                 <SelectContent>
@@ -245,9 +248,9 @@ export default function EditCarPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-zinc-300">Fuel Type</Label>
+              <Label className="text-xs font-bold text-slate-700">Fuel Type</Label>
               <Select value={formData.fuel_type || 'Petrol'} onValueChange={(val) => handleSelectChange('fuel_type', String(val))}>
-                <SelectTrigger className="bg-zinc-950 border-zinc-800">
+                <SelectTrigger className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]">
                   <SelectValue placeholder="Select fuel type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -260,9 +263,9 @@ export default function EditCarPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-zinc-300">Body Type</Label>
+              <Label className="text-xs font-bold text-slate-700">Body Type</Label>
               <Select value={formData.body_type || 'Sedan'} onValueChange={(val) => handleSelectChange('body_type', String(val))}>
-                <SelectTrigger className="bg-zinc-950 border-zinc-800">
+                <SelectTrigger className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]">
                   <SelectValue placeholder="Select body type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -277,46 +280,46 @@ export default function EditCarPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="engine" className="text-zinc-300">Engine</Label>
-              <Input id="engine" name="engine" value={formData.engine} onChange={handleChange} className="bg-zinc-950 border-zinc-800" placeholder="e.g. 4.0L Flat-6" />
+              <Label htmlFor="engine" className="text-xs font-bold text-slate-700">Engine</Label>
+              <Input id="engine" name="engine" value={formData.engine} onChange={handleChange} className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" placeholder="e.g. 4.0L Flat-6" />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="horsepower" className="text-zinc-300">Horsepower</Label>
-              <Input id="horsepower" name="horsepower" type="number" value={formData.horsepower} onChange={handleChange} className="bg-zinc-950 border-zinc-800" placeholder="e.g. 502" />
+              <Label htmlFor="horsepower" className="text-xs font-bold text-slate-700">Horsepower</Label>
+              <Input id="horsepower" name="horsepower" type="number" value={formData.horsepower} onChange={handleChange} className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" placeholder="e.g. 502" />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="exterior_color" className="text-zinc-300">Exterior Color</Label>
-              <Input id="exterior_color" name="exterior_color" value={formData.exterior_color} onChange={handleChange} className="bg-zinc-950 border-zinc-800" placeholder="e.g. GT Silver Metallic" />
+              <Label htmlFor="exterior_color" className="text-xs font-bold text-slate-700">Exterior Color</Label>
+              <Input id="exterior_color" name="exterior_color" value={formData.exterior_color} onChange={handleChange} className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" placeholder="e.g. GT Silver Metallic" />
             </div>
           </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 space-y-6">
-          <h3 className="text-lg font-medium text-white border-b border-zinc-800 pb-2">Images</h3>
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-6 shadow-xs">
+          <h3 className="text-base font-extrabold text-slate-900 border-b border-slate-100 pb-3">Vehicle Images</h3>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {images.map((img, idx) => (
-              <div key={idx} className="relative aspect-video rounded-md overflow-hidden bg-zinc-950 border border-zinc-800 group">
+              <div key={idx} className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 border border-slate-200 group">
                 <img src={img} alt={`Car ${idx}`} className="w-full h-full object-cover" />
                 <button 
                   type="button" 
                   onClick={() => removeImage(idx)}
-                  className="absolute top-2 right-2 bg-red-600/90 hover:bg-red-600 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-2 right-2 bg-rose-600/90 hover:bg-rose-600 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-xs"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             ))}
             
-            <label className="aspect-video rounded-md border-2 border-dashed border-zinc-700 hover:border-zinc-500 hover:bg-zinc-800/50 flex flex-col items-center justify-center cursor-pointer transition-colors text-zinc-400 hover:text-zinc-300">
+            <label className="aspect-video rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 hover:border-slate-300 hover:bg-slate-100/50 flex flex-col items-center justify-center cursor-pointer transition-colors text-slate-400 hover:text-slate-600">
               {uploading ? (
-                <span className="text-sm">Uploading...</span>
+                <span className="text-xs font-bold text-slate-500">Uploading...</span>
               ) : (
                 <>
-                  <Upload className="w-6 h-6 mb-2" />
-                  <span className="text-sm">Upload Image</span>
+                  <Upload className="w-6 h-6 mb-1 text-slate-400" />
+                  <span className="text-xs font-bold text-slate-600">Upload Image</span>
                 </>
               )}
               <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
@@ -324,18 +327,18 @@ export default function EditCarPage() {
           </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 space-y-6">
-          <h3 className="text-lg font-medium text-white border-b border-zinc-800 pb-2">Description</h3>
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-6 shadow-xs">
+          <h3 className="text-base font-extrabold text-slate-900 border-b border-slate-100 pb-3">Description</h3>
           
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-zinc-300">Detailed Description</Label>
+            <Label htmlFor="description" className="text-xs font-bold text-slate-700">Detailed Description</Label>
             <Textarea 
               id="description" 
               name="description" 
-              rows={8}
+              rows={6}
               value={formData.description} 
               onChange={handleChange} 
-              className="bg-zinc-950 border-zinc-800 resize-y" 
+              className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium resize-y focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" 
               placeholder="Write a detailed description of the car..." 
             />
           </div>

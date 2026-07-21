@@ -139,62 +139,65 @@ export default function EditBlogPage() {
   };
 
   if (fetching) {
-    return <div className="text-white text-center py-20">Loading blog details...</div>;
+    return <div className="text-slate-500 text-center py-20 text-xs font-semibold">Loading blog details...</div>;
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-3">
           <Link href="/admin/blogs" prefetch={false}>
-            <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
+            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
-          <h2 className="text-2xl font-bold tracking-tight text-white">
-            {id ? 'Edit Post' : 'Create New Post'}
-          </h2>
+          <div>
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              {id ? 'Edit Blog Post' : 'Create New Post'}
+            </h1>
+            <p className="text-xs font-semibold text-slate-500 mt-0.5">Draft, format, and publish your content.</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button 
             variant="outline" 
             onClick={(e) => handleSubmit(e, false)} 
             disabled={loading}
-            className="border-zinc-800 text-white hover:bg-zinc-800"
+            className="border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-bold rounded-xl shadow-xs"
           >
-            <Save className="w-4 h-4 mr-2" />
+            <Save className="w-4 h-4 mr-2 text-slate-500" />
             Save Draft
           </Button>
           <Button 
             onClick={(e) => handleSubmit(e, true)} 
             disabled={loading} 
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm shadow-emerald-500/20"
           >
             <Eye className="w-4 h-4 mr-2" />
-            Publish
+            Publish Post
           </Button>
         </div>
       </div>
 
-      <form className="space-y-8">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 space-y-6">
-          <h3 className="text-lg font-medium text-white border-b border-zinc-800 pb-2">Content</h3>
+      <form className="space-y-6">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-6 shadow-xs">
+          <h3 className="text-base font-extrabold text-slate-900 border-b border-slate-100 pb-3">Post Content</h3>
           
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-zinc-300">Post Title <span className="text-red-500">*</span></Label>
-              <Input id="title" name="title" required value={formData.title} onChange={handleChange} className="bg-zinc-950 border-zinc-800 text-lg" placeholder="Enter post title" />
+              <Label htmlFor="title" className="text-xs font-bold text-slate-700">Post Title <span className="text-rose-500">*</span></Label>
+              <Input id="title" name="title" required value={formData.title} onChange={handleChange} className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-sm font-semibold focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" placeholder="Enter post title" />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="slug" className="text-zinc-300">URL Slug <span className="text-red-500">*</span></Label>
-              <Input id="slug" name="slug" required value={formData.slug} onChange={handleChange} className="bg-zinc-950 border-zinc-800" placeholder="post-url-slug" />
+              <Label htmlFor="slug" className="text-xs font-bold text-slate-700">URL Slug <span className="text-rose-500">*</span></Label>
+              <Input id="slug" name="slug" required value={formData.slug} onChange={handleChange} className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-mono focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" placeholder="post-url-slug" />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="category_id" className="text-zinc-300">Category</Label>
+              <Label htmlFor="category_id" className="text-xs font-bold text-slate-700">Category</Label>
               <Select value={formData.category_id || ''} onValueChange={(val) => handleSelectChange('category_id', String(val))}>
-                <SelectTrigger className="bg-zinc-950 border-zinc-800">
+                <SelectTrigger className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]">
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -207,59 +210,60 @@ export default function EditBlogPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="excerpt" className="text-zinc-300">Excerpt</Label>
+              <Label htmlFor="excerpt" className="text-xs font-bold text-slate-700">Excerpt</Label>
               <Textarea 
                 id="excerpt" 
                 name="excerpt" 
                 value={formData.excerpt} 
                 onChange={handleChange} 
-                className="bg-zinc-950 border-zinc-800 resize-y" 
+                className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium resize-y focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" 
                 placeholder="Brief summary of the post..." 
                 rows={3}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="content" className="text-zinc-300">Content <span className="text-red-500">*</span></Label>
+              <Label htmlFor="content" className="text-xs font-bold text-slate-700">Content <span className="text-rose-500">*</span></Label>
               <Textarea 
                 id="content" 
                 name="content" 
                 required
                 value={formData.content} 
                 onChange={handleChange} 
-                className="bg-zinc-950 border-zinc-800 resize-y font-mono text-sm" 
+                className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-mono resize-y focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" 
                 placeholder="Write your content here (Markdown or HTML supported)..." 
-                rows={15}
+                rows={14}
               />
             </div>
           </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 space-y-6">
-          <h3 className="text-lg font-medium text-white border-b border-zinc-800 pb-2">Featured Image</h3>
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-6 shadow-xs">
+          <h3 className="text-base font-extrabold text-slate-900 border-b border-slate-100 pb-3">Featured Image</h3>
           
           <div className="space-y-4">
             {featuredImage ? (
-              <div className="relative aspect-video max-w-xl rounded-md overflow-hidden bg-zinc-950 border border-zinc-800">
+              <div className="relative aspect-video max-w-xl rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
                 <img src={featuredImage} alt="Featured" className="w-full h-full object-cover" />
                 <Button 
                   type="button" 
                   variant="destructive" 
                   size="sm"
                   onClick={() => setFeaturedImage('')}
-                  className="absolute top-2 right-2"
+                  className="absolute top-3 right-3 text-xs font-bold rounded-xl shadow-xs"
                 >
                   Remove
                 </Button>
               </div>
             ) : (
-              <label className="aspect-video max-w-xl rounded-md border-2 border-dashed border-zinc-700 hover:border-zinc-500 hover:bg-zinc-800/50 flex flex-col items-center justify-center cursor-pointer transition-colors text-zinc-400 hover:text-zinc-300">
+              <label className="aspect-video max-w-xl rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 hover:border-slate-300 hover:bg-slate-100/50 flex flex-col items-center justify-center cursor-pointer transition-colors text-slate-400 hover:text-slate-600">
                 {uploading ? (
-                  <span>Uploading...</span>
+                  <span className="text-xs font-bold text-slate-500">Uploading...</span>
                 ) : (
                   <>
-                    <Upload className="w-8 h-8 mb-4" />
-                    <span>Click to upload featured image</span>
+                    <Upload className="w-8 h-8 mb-3 text-slate-400" />
+                    <span className="text-xs font-bold text-slate-600">Click to upload featured image</span>
+                    <span className="text-[11px] text-slate-400 mt-1">PNG, JPG or WEBP up to 5MB</span>
                   </>
                 )}
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
@@ -268,32 +272,32 @@ export default function EditBlogPage() {
           </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 space-y-6">
-          <h3 className="text-lg font-medium text-white border-b border-zinc-800 pb-2">SEO Settings</h3>
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-6 shadow-xs">
+          <h3 className="text-base font-extrabold text-slate-900 border-b border-slate-100 pb-3">SEO Settings</h3>
           
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="meta_title" className="text-zinc-300">Meta Title</Label>
-              <Input id="meta_title" name="meta_title" value={formData.meta_title} onChange={handleChange} className="bg-zinc-950 border-zinc-800" placeholder="SEO Title" />
-              <p className="text-xs text-zinc-500">Leave blank to use post title.</p>
+              <Label htmlFor="meta_title" className="text-xs font-bold text-slate-700">Meta Title</Label>
+              <Input id="meta_title" name="meta_title" value={formData.meta_title} onChange={handleChange} className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" placeholder="SEO Title" />
+              <p className="text-[11px] text-slate-400">Leave blank to use post title.</p>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="meta_description" className="text-zinc-300">Meta Description</Label>
+              <Label htmlFor="meta_description" className="text-xs font-bold text-slate-700">Meta Description</Label>
               <Textarea 
                 id="meta_description" 
                 name="meta_description" 
                 value={formData.meta_description} 
                 onChange={handleChange} 
-                className="bg-zinc-950 border-zinc-800" 
+                className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" 
                 placeholder="SEO Description" 
                 rows={2}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="focus_keyword" className="text-zinc-300">Focus Keyword</Label>
-              <Input id="focus_keyword" name="focus_keyword" value={formData.focus_keyword} onChange={handleChange} className="bg-zinc-950 border-zinc-800" placeholder="e.g. luxury cars 2024" />
+              <Label htmlFor="focus_keyword" className="text-xs font-bold text-slate-700">Focus Keyword</Label>
+              <Input id="focus_keyword" name="focus_keyword" value={formData.focus_keyword} onChange={handleChange} className="bg-slate-50/50 border-slate-200 rounded-xl text-slate-900 text-xs font-medium focus:bg-white focus:border-[#0055FE] focus:ring-1 focus:ring-[#0055FE]" placeholder="e.g. luxury cars 2024" />
             </div>
           </div>
         </div>
