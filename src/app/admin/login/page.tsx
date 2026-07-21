@@ -82,13 +82,23 @@ export default function AdminLoginPage() {
     router.prefetch("/admin/dashboard");
 
     try {
+      const supabase = createClient();
+      const { data: authResult, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (authError) {
+        throw new Error(authError.message);
+      }
+
       const result = await loginAdmin(email.trim(), password);
 
       if (result.success && result.user) {
         if (result.user.role === "buyer") {
-          router.replace("/");
+          window.location.href = "/";
         } else {
-          router.replace("/admin/dashboard");
+          window.location.href = "/admin/dashboard";
         }
       }
     } catch (err: any) {

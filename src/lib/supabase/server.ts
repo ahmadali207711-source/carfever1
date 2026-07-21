@@ -44,8 +44,8 @@ export async function createServerClient(): Promise<SupabaseClient<Database>> {
         },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value }) =>
-              cookieStore.set(name, value, opts)
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, { ...opts, ...options })
             );
           } catch {
             // Ignore if called from Server Component
