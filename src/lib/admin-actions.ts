@@ -637,7 +637,7 @@ export async function getAdminDashboardStats() {
     supabase.from('inspections').select('*', { count: 'exact', head: true }),
     supabase.from('inquiries').select('*', { count: 'exact', head: true }),
     supabase.from('cars').select('views_count, created_at'),
-    supabase.from('cars').select('id, title, make, model, created_at').order('created_at', { ascending: false }).limit(5),
+    supabase.from('cars').select('id, title, model, created_at').order('created_at', { ascending: false }).limit(5),
     supabase.from('inquiries').select('id, name, subject, created_at').order('created_at', { ascending: false }).limit(5),
     supabase.from('users').select('id, name, role, created_at').order('created_at', { ascending: false }).limit(5),
   ]);
@@ -646,7 +646,7 @@ export async function getAdminDashboardStats() {
 
   const carActivities = (recentCars || []).map((c: any) => ({
     title: 'New Car Listed',
-    desc: `${c.title || (c.make ? `${c.make} ${c.model}` : 'Vehicle')}`,
+    desc: c.title || 'Vehicle',
     createdAt: c.created_at,
   }));
 
@@ -697,24 +697,27 @@ export async function fetchAdminCars(search?: string, page: number = 1, pageSize
   const safePage = Math.max(1, page);
   const safePageSize = Math.min(Math.max(1, pageSize), 100);
 
-  let countQuery = supabase.from('cars').select('*', { count: 'exact', head: true });
-  let dataQuery = supabase
+  let query = supabase
     .from('cars')
-    .select('id, title, make, model, year, price, status, images, created_at')
+    .select('id, title, model, year, price, status, images, created_at', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range((safePage - 1) * safePageSize, safePage * safePageSize - 1);
 
   if (search) {
-    countQuery = countQuery.ilike('title', `%${search}%`);
-    dataQuery = dataQuery.ilike('title', `%${search}%`);
+    query = query.ilike('title', `%${search}%`);
   }
 
-  const [{ count }, { data, error }] = await Promise.all([countQuery, dataQuery]);
+  const { data, count, error } = await query;
+  if (error) handleError(error, 'Failed to fetch cars');
+
+  const formattedData = (data || []).map((c: any) => ({
+    ...c,
+    make: c.make || c.brand || '',
+  }));
+
   const total = count ?? 0;
   const totalPages = Math.ceil(total / safePageSize);
-
-  if (error) handleError(error, 'Failed to fetch cars');
-  return { data: data ?? [], total, page: safePage, pageSize: safePageSize, totalPages };
+  return { data: formattedData, total, page: safePage, pageSize: safePageSize, totalPages };
 }
 
 export async function fetchAdminBlogs(search?: string, page: number = 1, pageSize: number = 15) {
@@ -723,23 +726,21 @@ export async function fetchAdminBlogs(search?: string, page: number = 1, pageSiz
   const safePage = Math.max(1, page);
   const safePageSize = Math.min(Math.max(1, pageSize), 100);
 
-  let countQuery = supabase.from('blogs').select('*', { count: 'exact', head: true });
-  let dataQuery = supabase
+  let query = supabase
     .from('blogs')
-    .select('id, title, slug, category, published, created_at, author_name')
+    .select('id, title, slug, category, published, created_at, author_name', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range((safePage - 1) * safePageSize, safePage * safePageSize - 1);
 
   if (search) {
-    countQuery = countQuery.ilike('title', `%${search}%`);
-    dataQuery = dataQuery.ilike('title', `%${search}%`);
+    query = query.ilike('title', `%${search}%`);
   }
 
-  const [{ count }, { data, error }] = await Promise.all([countQuery, dataQuery]);
+  const { data, count, error } = await query;
+  if (error) handleError(error, 'Failed to fetch blogs');
+
   const total = count ?? 0;
   const totalPages = Math.ceil(total / safePageSize);
-
-  if (error) handleError(error, 'Failed to fetch blogs');
   return { data: data ?? [], total, page: safePage, pageSize: safePageSize, totalPages };
 }
 
@@ -749,18 +750,17 @@ export async function fetchAdminInspections(page: number = 1, pageSize: number =
   const safePage = Math.max(1, page);
   const safePageSize = Math.min(Math.max(1, pageSize), 100);
 
-  const countQuery = supabase.from('inspections').select('*', { count: 'exact', head: true });
-  const dataQuery = supabase
+  const query = supabase
     .from('inspections')
-    .select('*, car:cars(title, make, year)')
+    .select('*, car:cars(title, year)', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range((safePage - 1) * safePageSize, safePage * safePageSize - 1);
 
-  const [{ count }, { data, error }] = await Promise.all([countQuery, dataQuery]);
+  const { data, count, error } = await query;
+  if (error) handleError(error, 'Failed to fetch inspections');
+
   const total = count ?? 0;
   const totalPages = Math.ceil(total / safePageSize);
-
-  if (error) handleError(error, 'Failed to fetch inspections');
   return { data: data ?? [], total, page: safePage, pageSize: safePageSize, totalPages };
 }
 
