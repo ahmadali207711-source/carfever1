@@ -178,14 +178,27 @@ export async function submitCarListing(formData: {
 
     const supabase = createServiceRoleClient();
 
+    try {
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const exists = buckets?.some((b: any) => b.name === 'car-images');
+      if (!exists) {
+        await supabase.storage.createBucket('car-images', {
+          public: true,
+          fileSizeLimit: 10485760,
+        });
+      }
+    } catch {}
+
     const imageUrls: string[] = [];
     for (const file of parsed.images) {
-      const ext = file.name.split('.').pop();
+      const isWebP = file.type === 'image/webp' || file.name.endsWith('.webp');
+      const ext = isWebP ? 'webp' : (file.name.split('.').pop() || 'jpg');
+      const contentType = isWebP ? 'image/webp' : (file.type || 'image/jpeg');
       const path = `listings/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from('car-images')
-        .upload(path, file, { upsert: false });
+        .upload(path, file, { contentType, upsert: false });
 
       if (uploadError) {
         console.error('Image upload error:', uploadError.message);

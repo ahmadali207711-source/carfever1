@@ -213,6 +213,21 @@ export async function deleteBlog(id: string) {
   return true;
 }
 
+async function ensureBucketExists(supabase: any, bucketName = 'car-images') {
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const exists = buckets?.some((b: any) => b.name === bucketName);
+    if (!exists) {
+      await supabase.storage.createBucket(bucketName, {
+        public: true,
+        fileSizeLimit: 10485760,
+      });
+    }
+  } catch (err) {
+    console.error('Bucket check/creation error:', err);
+  }
+}
+
 export async function uploadImage(file: File): Promise<string> {
   await verifyAdminSession();
 
@@ -221,6 +236,7 @@ export async function uploadImage(file: File): Promise<string> {
   if (!allowed) handleError(new Error('Upload rate limit exceeded. Please wait a moment.'), 'Too many uploads');
 
   const supabase = createServiceRoleClient();
+  await ensureBucketExists(supabase, 'car-images');
 
   const isWebP = file.type === 'image/webp' || file.name.endsWith('.webp');
   const ext = isWebP ? 'webp' : (file.name.split('.').pop() || 'jpg');
