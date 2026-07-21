@@ -214,14 +214,35 @@ export async function submitCarListing(formData: {
       .select('id')
       .single();
 
-    if (error && error.message.includes('brand')) {
-      delete insertPayload.brand;
+    if (error) {
+      console.warn('Initial insert error:', error.message);
+      // If error is about brand vs make column mismatch
+      if (error.message.includes('brand')) {
+        delete insertPayload.brand;
+      }
+      if (error.message.includes('make')) {
+        delete insertPayload.make;
+      }
+      // If error is about missing seller_name or seller_phone
+      if (error.message.includes('seller_name')) {
+        delete insertPayload.seller_name;
+      }
+      if (error.message.includes('seller_phone')) {
+        delete insertPayload.seller_phone;
+      }
+      if (error.message.includes('image_url')) {
+        delete insertPayload.image_url;
+      }
+
       const retry = await supabase.from('cars').insert(insertPayload).select('id').single();
       data = retry.data;
       error = retry.error;
     }
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Final submitCarListing DB error:', error.message);
+      throw new Error(error.message);
+    }
 
     revalidatePath('/admin/cars');
     revalidatePath('/buy-car');
