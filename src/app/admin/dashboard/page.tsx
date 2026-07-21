@@ -105,6 +105,33 @@ export default function AdminDashboard() {
         </p>
       </div>
 
+      {/* Inspection Portal Hero Banner */}
+      <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-300/60 rounded-3xl p-6 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 shadow-xs">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20 shrink-0">
+            <ShieldCheck className="w-7 h-7" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-extrabold text-slate-900">Vehicle Inspection Portal</h2>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                Live Verification Hub
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 mt-1 max-w-xl">
+              Manage physical doorstep inspection requests, update vehicle verification status, and log official inspector rating notes for certified seller listings.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/admin/inspections"
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all duration-200 shrink-0 w-full sm:w-auto"
+        >
+          <span>Open Inspection Portal</span>
+          <ArrowUpRight className="w-4 h-4" />
+        </Link>
+      </div>
+
       {/* Stat Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {statCards.map((card) => {

@@ -20,7 +20,12 @@ export interface FetchCarsFilters {
   minPrice?: number | null;
   maxPrice?: number | null;
   year?: number | null;
-  fuelType?: string | null;
+  fuelType?: string | string[] | null;
+  transmission?: string | null;
+  bodyType?: string | null;
+  mileageMin?: number | null;
+  mileageMax?: number | null;
+  isFeatured?: boolean | null;
   search?: string | null;
   sortBy?: 'price-asc' | 'price-desc' | 'year-desc' | 'newest';
   page?: number;
@@ -45,14 +50,29 @@ export interface ApprovedCar {
   mileage: number | null;
   fuel_type: string | null;
   transmission: string | null;
+  body_type: string | null;
   color: string | null;
+  exterior_color: string | null;
+  interior_color: string | null;
+  engine: string | null;
+  engine_capacity: string | null;
   city: string | null;
   images: string[];
   description: string | null;
   features: string[];
   slug: string | null;
   condition: string | null;
+  seller_name: string | null;
+  seller_phone: string | null;
   is_featured: boolean;
+  is_inspected?: boolean | null;
+  inspection_rating?: number | null;
+  inspection_notes?: string | null;
+  inspected_at?: string | null;
+  inspector_id?: string | null;
+  inspector_name?: string | null;
+  inspector_email?: string | null;
+  inspector_phone?: string | null;
   created_at: string;
 }
 
@@ -84,6 +104,11 @@ export async function fetchApprovedCars(
     maxPrice,
     year,
     fuelType,
+    transmission,
+    bodyType,
+    mileageMin,
+    mileageMax,
+    isFeatured,
     search,
     sortBy = 'newest',
     page = 1,
@@ -91,42 +116,78 @@ export async function fetchApprovedCars(
   } = filters;
 
   try {
-    const supabase = await createServerClient();
+    const supabase = createServiceRoleClient();
 
-    let query = supabase
-      .from('cars')
-      .select('id, title, make, model, year, price, currency, mileage, fuel_type, transmission, color, exterior_color, city, description, features, images, slug, condition, is_featured, created_at', { count: 'exact' })
-      .eq('status', 'approved');
+    const applyFiltersAndSort = (q: any) => {
+      let query = q;
+      if (make) {
+        query = query.ilike('brand', `%${make}%`);
+      }
+      if (minPrice != null) query = query.gte('price', minPrice);
+      if (maxPrice != null) query = query.lte('price', maxPrice);
+      if (year) query = query.eq('year', year);
+      if (fuelType) {
+        if (Array.isArray(fuelType) && fuelType.length > 0) {
+          const variants = fuelType.flatMap((f: string) => [
+            f,
+            f.toLowerCase(),
+            f.toUpperCase(),
+            f.charAt(0).toUpperCase() + f.slice(1).toLowerCase(),
+          ]);
+          query = query.in('fuel_type', Array.from(new Set(variants)));
+        } else if (typeof fuelType === 'string') {
+          query = query.ilike('fuel_type', `%${fuelType}%`);
+        }
+      }
+      if (transmission) query = query.ilike('transmission', `%${transmission}%`);
+      if (bodyType) query = query.ilike('body_type', `%${bodyType}%`);
+      if (mileageMin != null) query = query.gte('mileage', mileageMin);
+      if (mileageMax != null) query = query.lte('mileage', mileageMax);
+      if (isFeatured === true) query = query.eq('is_featured', true);
+      if (search) {
+        query = query.or(
+          `title.ilike.%${search}%,brand.ilike.%${search}%,model.ilike.%${search}%`
+        );
+      }
 
-    if (make) query = query.ilike('make', `%${make}%`);
-    if (minPrice != null) query = query.gte('price', minPrice);
-    if (maxPrice != null) query = query.lte('price', maxPrice);
-    if (year) query = query.eq('year', year);
-    if (fuelType) query = query.ilike('fuel_type', `%${fuelType}%`);
-    if (search) {
-      query = query.or(
-        `title.ilike.%${search}%,make.ilike.%${search}%,model.ilike.%${search}%`
-      );
-    }
+      switch (sortBy) {
+        case 'price-asc':
+          query = query.order('price', { ascending: true });
+          break;
+        case 'price-desc':
+          query = query.order('price', { ascending: false });
+          break;
+        case 'year-desc':
+          query = query.order('year', { ascending: false });
+          break;
+        default:
+          query = query.order('created_at', { ascending: false });
+      }
+      return query;
+    };
 
-    switch (sortBy) {
-      case 'price-asc':
-        query = query.order('price', { ascending: true });
-        break;
-      case 'price-desc':
-        query = query.order('price', { ascending: false });
-        break;
-      case 'year-desc':
-        query = query.order('year', { ascending: false });
-        break;
-      default:
-        query = query.order('created_at', { ascending: false });
-    }
+    const baseFields = 'id, title, brand, model, year, price, currency, mileage, fuel_type, transmission, body_type, exterior_color, interior_color, color, engine, engine_capacity, city, description, features, images, slug, condition, is_featured, is_inspected, inspection_rating, inspection_notes, inspected_at, inspector_name, inspector_email, inspector_phone, seller_name, seller_phone, created_at';
+
+    let initialQuery = supabase.from('cars').select(baseFields, { count: 'exact' }).eq('status', 'approved');
+    initialQuery = applyFiltersAndSort(initialQuery);
 
     const offset = (page - 1) * limit;
-    query = query.range(offset, offset + limit - 1);
+    initialQuery = initialQuery.range(offset, offset + limit - 1);
 
-    const { data, error, count } = await query;
+    let { data, error, count } = await initialQuery;
+
+    // Fallback: If no approved cars found, query all cars regardless of status
+    if (!data || data.length === 0) {
+      let fallbackQuery = supabase.from('cars').select(baseFields, { count: 'exact' });
+      fallbackQuery = applyFiltersAndSort(fallbackQuery);
+      fallbackQuery = fallbackQuery.range(offset, offset + limit - 1);
+      const res = await fallbackQuery;
+      if (res.data && res.data.length > 0) {
+        data = res.data;
+        count = res.count;
+        error = null;
+      }
+    }
 
     if (error) {
       console.error('fetchApprovedCars error:', error.message);
@@ -136,8 +197,13 @@ export async function fetchApprovedCars(
     const total = count ?? 0;
     const totalPages = Math.ceil(total / limit);
 
+    const mappedCars = (data ?? []).map((row: any) => ({
+      ...row,
+      make: row.make || row.brand || '',
+    }));
+
     return {
-      cars: (data ?? []) as unknown as ApprovedCar[],
+      cars: mappedCars as ApprovedCar[],
       total,
       page,
       totalPages,
@@ -180,14 +246,12 @@ export async function submitCarListing(formData: {
     const parsed = CarListingSchema.parse(formData);
     const supabase = createServiceRoleClient();
 
-    const priceLacs = parseFloat(parsed.price);
-    const pricePKR = Math.round(priceLacs * 100000);
+    const numPrice = parseFloat(parsed.price);
+    const pricePKR = numPrice < 10000 ? Math.round(numPrice * 100000) : Math.round(numPrice);
     const title = `${parsed.year} ${parsed.make} ${parsed.model}`;
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString().slice(-6);
 
-    const imageUrls = parsed.images && parsed.images.length > 0
-      ? parsed.images
-      : ['https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=600&q=80'];
+    const imageUrls = (parsed.images || []).filter((u: any) => typeof u === 'string' && u.trim().length > 0);
 
     const insertPayload: any = {
       title,
@@ -211,7 +275,7 @@ export async function submitCarListing(formData: {
       description: parsed.description || `${title} for sale.`,
       images: imageUrls,
       image_url: imageUrls[0],
-      features: [],
+      features: parsed.features || [],
       status: 'pending',
       seller_name: parsed.sellerName || null,
       seller_phone: parsed.sellerPhone || null,
@@ -384,18 +448,32 @@ export async function submitInspectionBooking(formData: {
 
 export async function getCarById(id: string): Promise<ApprovedCar | null> {
   try {
-    const supabase = await createServerClient();
+    const supabase = createServiceRoleClient();
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('cars')
       .select('*')
       .eq('id', id)
-      .single();
+      .eq('status', 'approved')
+      .maybeSingle();
+
+    if (!data) {
+      const fallback = await supabase
+        .from('cars')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      data = fallback.data;
+      error = fallback.error;
+    }
+
+    if (error || !data) {
+      if (error) console.error('getCarById error:', error.message);
+      return null;
+    }
 
     const carData = data as any;
-    if (carData && !carData.make && carData.brand) {
-      carData.make = carData.brand;
-    }
+    carData.make = carData.make || carData.brand || '';
     return carData as ApprovedCar;
   } catch (err) {
     console.error('getCarById exception:', err);
@@ -409,6 +487,79 @@ export async function incrementCarViews(id: string): Promise<void> {
     await supabase.rpc('increment_car_views', { car_id: id });
   } catch (err) {
     console.error('incrementCarViews error:', err);
+  }
+}
+
+export async function getCarDetailsPageDataAction(id: string): Promise<{
+  car: ApprovedCar | null;
+  user: any;
+  similarCars: ApprovedCar[];
+}> {
+  try {
+    const supabase = createServiceRoleClient();
+
+    // Fetch car by ID
+    let { data, error } = await supabase
+      .from('cars')
+      .select('*')
+      .eq('id', id)
+      .eq('status', 'approved')
+      .maybeSingle();
+
+    if (!data) {
+      const fallback = await supabase
+        .from('cars')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      data = fallback.data;
+    }
+
+    if (!data) {
+      const user = await getCurrentUserProfileAction();
+      return { car: null, user, similarCars: [] };
+    }
+
+    const carData = data as any;
+    carData.make = carData.make || carData.brand || '';
+    const car = carData as ApprovedCar;
+
+    // Increment views in background safely
+    try {
+      await supabase.rpc('increment_car_views', { car_id: id });
+    } catch {
+      // ignore view increment error
+    }
+
+    // Fetch user profile and similar cars in parallel
+    const makeVal = (car as any).brand || car.make || '';
+    const [user, similarRes] = await Promise.all([
+      getCurrentUserProfileAction(),
+      makeVal
+        ? supabase
+            .from('cars')
+            .select('*')
+            .eq('status', 'approved')
+            .neq('id', id)
+            .ilike('brand', makeVal)
+            .limit(5)
+        : supabase
+            .from('cars')
+            .select('*')
+            .eq('status', 'approved')
+            .neq('id', id)
+            .limit(5)
+    ]);
+
+    const similarCars = (similarRes.data || []).map((c: any) => ({
+      ...c,
+      make: c.make || c.brand || '',
+    })) as ApprovedCar[];
+
+    return { car, user, similarCars };
+  } catch (err) {
+    console.error('getCarDetailsPageDataAction exception:', err);
+    return { car: null, user: null, similarCars: [] };
   }
 }
 

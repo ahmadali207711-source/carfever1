@@ -138,6 +138,7 @@ function CarCard({ car }: { car: HomeCarCard }) {
             </div>
             <Link
               href={`/buy-car/${car.id}`}
+              prefetch={false}
               suppressHydrationWarning
               className="text-xs border border-[#0055FE] text-[#0055FE] hover:bg-blue-50 font-bold transition-colors flex items-center gap-1 shrink-0 min-h-[36px] px-3 rounded-md"
             >

@@ -53,8 +53,15 @@ function isInWishlistId(id: string): boolean {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatPrice(price: number, currency?: string | null): string {
-  const lacs = price / 100000;
+  let p = price;
+  while (p >= 1000000000) {
+    p = p / 100000;
+  }
   const prefix = currency || 'PKR';
+  if (p >= 10000000) {
+    return `${prefix} ${(p / 10000000).toFixed(2)} Crore`;
+  }
+  const lacs = p / 100000;
   return `${prefix} ${lacs % 1 === 0 ? lacs.toFixed(0) : lacs.toFixed(1)} Lacs`;
 }
 
@@ -145,10 +152,10 @@ function CarCard({ car }: { car: ApprovedCar }) {
           <span className="text-lg font-bold text-[#0055FE]">
             {formatPrice(car.price, car.currency)}
           </span>
-          <Link href={`/buy-car/${car.id}`} suppressHydrationWarning>
+          <Link href={`/buy-car/${car.id}`} prefetch={false} suppressHydrationWarning>
             <Button
               size="sm"
-              className="border border-[#0055FE] text-[#0055FE] hover:bg-blue-50 bg-white"
+              className="border border-[#0055FE] text-[#0055FE] hover:bg-blue-50 bg-white cursor-pointer"
             >
               View Details
             </Button>
@@ -192,6 +199,14 @@ interface FilterSidebarProps {
   setSelectedYear: (v: string | null) => void;
   selectedFuel: string[];
   setSelectedFuel: (v: string[]) => void;
+  selectedTransmission: string | null;
+  setSelectedTransmission: (v: string | null) => void;
+  selectedBodyType: string | null;
+  setSelectedBodyType: (v: string | null) => void;
+  mileageMin: string;
+  setMileageMin: (v: string) => void;
+  mileageMax: string;
+  setMileageMax: (v: string) => void;
   onReset: () => void;
 }
 
@@ -204,10 +219,20 @@ function FilterSidebar({
   setSelectedYear,
   selectedFuel,
   setSelectedFuel,
+  selectedTransmission,
+  setSelectedTransmission,
+  selectedBodyType,
+  setSelectedBodyType,
+  mileageMin,
+  setMileageMin,
+  mileageMax,
+  setMileageMax,
   onReset,
 }: FilterSidebarProps) {
-  const makes = ['Toyota', 'Honda', 'Suzuki', 'KIA', 'Hyundai', 'Tesla'];
+  const makes = ['Toyota', 'Honda', 'Suzuki', 'KIA', 'Hyundai', 'Tesla', 'BMW', 'Mercedes', 'Audi', 'Nissan', 'Mitsubishi', 'Daihatsu'];
   const fuelTypes = ['Petrol', 'Diesel', 'Hybrid', 'Electric'];
+  const transmissions = ['Automatic', 'Manual'];
+  const bodyTypes = ['Sedan', 'Hatchback', 'SUV', 'Pickup', 'Coupe', 'Van'];
 
   const handleFuelToggle = (fuel: string, checked: boolean) => {
     if (checked) {
@@ -247,21 +272,21 @@ function FilterSidebar({
             Max Price
           </h3>
           <span className="text-xs font-bold text-[#0055FE] bg-[#0055FE]/10 px-2 py-0.5 rounded">
-            {(maxPrice / 100000).toFixed(0)} Lacs
+            {maxPrice >= 10000000 ? `${(maxPrice / 10000000).toFixed(1)} Crore` : `${(maxPrice / 100000).toFixed(0)} Lacs`}
           </span>
         </div>
         <input
           type="range"
-          min="1000000"
-          max="20000000"
+          min="500000"
+          max="100000000"
           step="500000"
           value={maxPrice}
           onChange={(e) => setMaxPrice(Number(e.target.value))}
           className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#0055FE]"
         />
         <div className="flex justify-between items-center mt-3 text-xs text-gray-500">
-          <span>10 Lacs</span>
-          <span>2 Crore+</span>
+          <span>5 Lacs</span>
+          <span>10 Crore+</span>
         </div>
       </div>
 
@@ -278,7 +303,7 @@ function FilterSidebar({
           className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-100 transition-colors focus:ring-1 focus:ring-[#0055FE] focus:border-[#0055FE] focus:outline-none appearance-none cursor-pointer"
         >
           <option value="">Any Year</option>
-          {[2025, 2024, 2023, 2022, 2021, 2020].map((yr) => (
+          {Array.from({ length: 32 }, (_, i) => 2026 - i).map((yr) => (
             <option key={yr} value={yr}>
               {yr}
             </option>
@@ -313,6 +338,76 @@ function FilterSidebar({
         </div>
       </div>
 
+      <div className="h-px w-full bg-gray-200" />
+
+      {/* Transmission */}
+      <div>
+        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">
+          Transmission
+        </h3>
+        <select
+          value={selectedTransmission || ''}
+          onChange={(e) => setSelectedTransmission(e.target.value || null)}
+          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-100 transition-colors focus:ring-1 focus:ring-[#0055FE] focus:border-[#0055FE] focus:outline-none appearance-none cursor-pointer"
+        >
+          <option value="">Any Transmission</option>
+          {transmissions.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="h-px w-full bg-gray-200" />
+
+      {/* Body Type */}
+      <div>
+        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">
+          Body Type
+        </h3>
+        <select
+          value={selectedBodyType || ''}
+          onChange={(e) => setSelectedBodyType(e.target.value || null)}
+          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-100 transition-colors focus:ring-1 focus:ring-[#0055FE] focus:border-[#0055FE] focus:outline-none appearance-none cursor-pointer"
+        >
+          <option value="">Any Body Type</option>
+          {bodyTypes.map((b) => (
+            <option key={b} value={b}>
+              {b}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="h-px w-full bg-gray-200" />
+
+      {/* Mileage Range */}
+      <div>
+        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">
+          Mileage Range (KM)
+        </h3>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min="0"
+            placeholder="Min"
+            value={mileageMin}
+            onChange={(e) => setMileageMin(e.target.value)}
+            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#0055FE] focus:border-[#0055FE]"
+          />
+          <span className="text-gray-400 text-xs font-bold">TO</span>
+          <input
+            type="number"
+            min="0"
+            placeholder="Max"
+            value={mileageMax}
+            onChange={(e) => setMileageMax(e.target.value)}
+            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#0055FE] focus:border-[#0055FE]"
+          />
+        </div>
+      </div>
+
       <Button
         onClick={onReset}
         variant="outline"
@@ -327,7 +422,7 @@ function FilterSidebar({
 // ─── Main Content ─────────────────────────────────────────────────────────────
 
 const ITEMS_PER_PAGE = 6;
-const MAX_PRICE = 20000000;
+const MAX_PRICE = 100000000;
 
 function BuyCarContent() {
   const searchParams = useSearchParams();
@@ -338,6 +433,10 @@ function BuyCarContent() {
   const [maxPrice, setMaxPrice] = useState<number>(MAX_PRICE);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [selectedFuel, setSelectedFuel] = useState<string[]>([]);
+  const [selectedTransmission, setSelectedTransmission] = useState<string | null>(null);
+  const [selectedBodyType, setSelectedBodyType] = useState<string | null>(null);
+  const [mileageMin, setMileageMin] = useState('');
+  const [mileageMax, setMileageMax] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<FetchCarsFilters['sortBy']>('newest');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -361,7 +460,11 @@ function BuyCarContent() {
         make: selectedMake,
         maxPrice: maxPrice < MAX_PRICE ? maxPrice : null,
         year: selectedYear ? parseInt(selectedYear) : null,
-        fuelType: selectedFuel.length === 1 ? selectedFuel[0] : null,
+        fuelType: selectedFuel.length > 0 ? selectedFuel : null,
+        transmission: selectedTransmission,
+        bodyType: selectedBodyType,
+        mileageMin: mileageMin ? parseInt(mileageMin) : null,
+        mileageMax: mileageMax ? parseInt(mileageMax) : null,
         search: searchQuery || null,
         sortBy,
         page: currentPage,
@@ -372,7 +475,7 @@ function BuyCarContent() {
       setTotalPages(result.totalPages);
       setLoading(false);
     });
-  }, [selectedMake, maxPrice, selectedYear, selectedFuel, searchQuery, sortBy, currentPage]);
+  }, [selectedMake, maxPrice, selectedYear, selectedFuel, selectedTransmission, selectedBodyType, mileageMin, mileageMax, searchQuery, sortBy, currentPage]);
 
   useEffect(() => {
     loadCars();
@@ -381,13 +484,17 @@ function BuyCarContent() {
   // Reset page when filters change (not on page change itself)
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedMake, maxPrice, selectedYear, selectedFuel, searchQuery, sortBy]);
+  }, [selectedMake, maxPrice, selectedYear, selectedFuel, selectedTransmission, selectedBodyType, mileageMin, mileageMax, searchQuery, sortBy]);
 
   const handleResetFilters = () => {
     setSelectedMake(null);
     setMaxPrice(MAX_PRICE);
     setSelectedYear(null);
     setSelectedFuel([]);
+    setSelectedTransmission(null);
+    setSelectedBodyType(null);
+    setMileageMin('');
+    setMileageMax('');
     setSearchQuery('');
     setCurrentPage(1);
     router.push('/buy-car');
@@ -398,6 +505,10 @@ function BuyCarContent() {
     maxPrice < MAX_PRICE ||
     selectedYear ||
     selectedFuel.length > 0 ||
+    selectedTransmission ||
+    selectedBodyType ||
+    mileageMin ||
+    mileageMax ||
     searchQuery;
 
   const isLoadingState = loading || isPending;
@@ -421,12 +532,12 @@ function BuyCarContent() {
                   <Button
                     variant="outline"
                     className="flex lg:hidden border-gray-300 text-gray-700 bg-white hover:bg-gray-50 w-full sm:w-auto h-11 font-medium"
-                  />
+                  >
+                    <SlidersHorizontal className="w-4 h-4 mr-2" />
+                    Filters
+                  </Button>
                 }
-              >
-                <SlidersHorizontal className="w-4 h-4 mr-2" />
-                Filters
-              </SheetTrigger>
+              />
               <SheetContent side="right" className="w-[300px] bg-white border-l border-gray-200 p-6 overflow-y-auto">
                 <SheetHeader className="mb-6 px-0">
                   <SheetTitle className="text-gray-900 text-left text-lg font-bold">Filter Inventory</SheetTitle>
@@ -441,6 +552,14 @@ function BuyCarContent() {
                     setSelectedYear={setSelectedYear}
                     selectedFuel={selectedFuel}
                     setSelectedFuel={setSelectedFuel}
+                    selectedTransmission={selectedTransmission}
+                    setSelectedTransmission={setSelectedTransmission}
+                    selectedBodyType={selectedBodyType}
+                    setSelectedBodyType={setSelectedBodyType}
+                    mileageMin={mileageMin}
+                    setMileageMin={setMileageMin}
+                    mileageMax={mileageMax}
+                    setMileageMax={setMileageMax}
                     onReset={handleResetFilters}
                   />
                   <Button
@@ -468,6 +587,14 @@ function BuyCarContent() {
                   setSelectedYear={setSelectedYear}
                   selectedFuel={selectedFuel}
                   setSelectedFuel={setSelectedFuel}
+                  selectedTransmission={selectedTransmission}
+                  setSelectedTransmission={setSelectedTransmission}
+                  selectedBodyType={selectedBodyType}
+                  setSelectedBodyType={setSelectedBodyType}
+                  mileageMin={mileageMin}
+                  setMileageMin={setMileageMin}
+                  mileageMax={mileageMax}
+                  setMileageMax={setMileageMax}
                   onReset={handleResetFilters}
                 />
               </div>
@@ -510,6 +637,30 @@ function BuyCarContent() {
                       <button onClick={() => setSelectedFuel(selectedFuel.filter((x) => x !== f))} className="hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
                     </Badge>
                   ))}
+                  {selectedTransmission && (
+                    <Badge variant="outline" className="flex items-center gap-1.5 border-gray-200 text-gray-700 pl-2 pr-1.5 py-1 bg-gray-50">
+                      Transmission: {selectedTransmission}
+                      <button onClick={() => setSelectedTransmission(null)} className="hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
+                    </Badge>
+                  )}
+                  {selectedBodyType && (
+                    <Badge variant="outline" className="flex items-center gap-1.5 border-gray-200 text-gray-700 pl-2 pr-1.5 py-1 bg-gray-50">
+                      Body Type: {selectedBodyType}
+                      <button onClick={() => setSelectedBodyType(null)} className="hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
+                    </Badge>
+                  )}
+                  {mileageMin && (
+                    <Badge variant="outline" className="flex items-center gap-1.5 border-gray-200 text-gray-700 pl-2 pr-1.5 py-1 bg-gray-50">
+                      Mileage &ge; {parseInt(mileageMin).toLocaleString()}
+                      <button onClick={() => setMileageMin('')} className="hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
+                    </Badge>
+                  )}
+                  {mileageMax && (
+                    <Badge variant="outline" className="flex items-center gap-1.5 border-gray-200 text-gray-700 pl-2 pr-1.5 py-1 bg-gray-50">
+                      Mileage &le; {parseInt(mileageMax).toLocaleString()}
+                      <button onClick={() => setMileageMax('')} className="hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
+                    </Badge>
+                  )}
                   <button onClick={handleResetFilters} className="text-xs font-semibold text-[#0055FE] hover:underline ml-auto">
                     Clear All
                   </button>

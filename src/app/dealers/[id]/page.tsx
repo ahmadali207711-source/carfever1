@@ -188,7 +188,7 @@ export default async function DealerProfilePage({ params }: { params: { id: stri
                   </div>
                   <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                     <span className="text-xs text-gray-500 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{car.location}</span>
-                    <Link href={`/buy-car/${car.id}`} className="text-xs border border-[#0055FE] text-[#0055FE] hover:bg-blue-50 font-bold flex items-center gap-1 min-h-[36px] px-3 rounded-md transition-colors">
+                    <Link href={`/buy-car/${car.id}`} prefetch={false} className="text-xs border border-[#0055FE] text-[#0055FE] hover:bg-blue-50 font-bold flex items-center gap-1 min-h-[36px] px-3 rounded-md transition-colors">
                       View <ChevronRight className="w-3 h-3" />
                     </Link>
                   </div>

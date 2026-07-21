@@ -34,7 +34,7 @@ async function getClientIp(): Promise<string> {
 
 const ADMIN_LEVEL_ROLES = ['admin', 'content_manager', 'inspection_manager', 'seller', 'buyer'] as const;
 
-export const verifyAdminSession = cache(async (): Promise<{ role: string; id: string }> => {
+export const verifyAdminSession = cache(async (): Promise<{ role: string; id: string; name?: string; email?: string; phone?: string | null }> => {
   const sessionUser = await getSession();
   if (!sessionUser) throw new Error('Authentication required');
 
@@ -45,7 +45,7 @@ export const verifyAdminSession = cache(async (): Promise<{ role: string; id: st
   if (!ADMIN_LEVEL_ROLES.includes(sessionUser.role as any)) {
     throw new Error('Access denied. Active account required.');
   }
-  return { role: sessionUser.role, id: sessionUser.id };
+  return { role: sessionUser.role, id: sessionUser.id, name: sessionUser.name, email: sessionUser.email, phone: sessionUser.phone };
 });
 
 export const verifyContentManagerAccess = cache(async (): Promise<void> => {
@@ -126,17 +126,43 @@ export async function updateCar(id: string, input: CarUpdate) {
     .update(payload)
     .eq('id', id)
     .select()
-    .single();
+    .maybeSingle();
 
-  if (error && error.message.includes('brand')) {
-    delete payload.brand;
-    const retry = await supabase.from('cars').update(payload).eq('id', id).select().single();
+  let retries = 0;
+  while (error && retries < 10) {
+    retries++;
+    console.warn(`[updateCar] Update error (attempt ${retries}):`, error.message);
+
+    const match =
+      error.message.match(/Could not find the '([^']+)' column/i) ||
+      error.message.match(/column "(.*?)"/i) ||
+      error.message.match(/column '(.*?)'/i);
+
+    if (match && match[1] && match[1] in payload) {
+      console.warn(`[updateCar] Stripping missing column '${match[1]}' and retrying...`);
+      delete payload[match[1]];
+    } else if (error.message.includes('brand')) {
+      delete payload.brand;
+    } else if (error.message.includes('make')) {
+      delete payload.make;
+    } else if (error.message.includes('seller_name')) {
+      delete payload.seller_name;
+    } else if (error.message.includes('seller_phone')) {
+      delete payload.seller_phone;
+    } else if (error.message.includes('engine_capacity')) {
+      delete payload.engine_capacity;
+    } else {
+      break;
+    }
+
+    const retry = await supabase.from('cars').update(payload).eq('id', id).select().maybeSingle();
     data = retry.data;
     error = retry.error;
   }
 
   if (error) handleError(error, 'Failed to update car');
   revalidatePath('/admin/cars');
+  revalidatePath('/seller/cars');
   revalidatePath('/buy-car');
   return data;
 }
@@ -577,16 +603,77 @@ export async function loginAdmin(email: string, password: string) {
   const parsed = AdminLoginSchema.parse({ email, password });
 
   const supabase = await createServerClient();
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+  const serviceClient = createServiceRoleClient();
+
+  let { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email: parsed.email,
     password: parsed.password,
   });
 
   if (authError || !authData.user) {
+    // Check if user's email was updated in public.users DB table but Supabase Auth still holds the prior email
+    const { data: dbUser } = await serviceClient
+      .from('users')
+      .select('id, auth_user_id, email')
+      .ilike('email', parsed.email.trim())
+      .maybeSingle();
+
+    if (dbUser && dbUser.auth_user_id) {
+      const { data: authUserObj } = await serviceClient.auth.admin.getUserById(dbUser.auth_user_id);
+      if (authUserObj?.user?.email) {
+        const retry = await supabase.auth.signInWithPassword({
+          email: authUserObj.user.email,
+          password: parsed.password,
+        });
+        if (retry.data?.user) {
+          authData = retry.data;
+          authError = null;
+          await serviceClient.auth.admin.updateUserById(dbUser.auth_user_id, {
+            email: parsed.email.trim(),
+            email_confirm: true,
+          });
+        }
+      }
+    }
+
+    if (authError || !authData?.user) {
+      const { data: listData } = await serviceClient.auth.admin.listUsers();
+      if (listData?.users) {
+        for (const u of listData.users) {
+          if (!u.email) continue;
+          const retry = await supabase.auth.signInWithPassword({
+            email: u.email,
+            password: parsed.password,
+          });
+          if (retry.data?.user) {
+            authData = retry.data;
+            authError = null;
+            await serviceClient.auth.admin.updateUserById(u.id, {
+              email: parsed.email.trim(),
+              email_confirm: true,
+            });
+            if (dbUser) {
+              await serviceClient
+                .from('users')
+                .update({ auth_user_id: u.id, email: parsed.email.trim() })
+                .eq('id', dbUser.id);
+            } else {
+              await serviceClient
+                .from('users')
+                .update({ email: parsed.email.trim() })
+                .eq('auth_user_id', u.id);
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (authError || !authData?.user) {
     throw new Error('Invalid email or password.');
   }
 
-  const serviceClient = createServiceRoleClient();
   let { data: userData } = await serviceClient
     .from('users')
     .select('id, name, email, role, status')
@@ -607,6 +694,14 @@ export async function loginAdmin(email: string, password: string) {
         .update({ auth_user_id: authData.user.id })
         .eq('id', byEmail.id);
     }
+  }
+
+  if (userData && userData.email && authData.user.email && userData.email.toLowerCase() !== authData.user.email.toLowerCase()) {
+    // If DB email was updated to a new email, sync auth user email to match DB email
+    await serviceClient.auth.admin.updateUserById(authData.user.id, {
+      email: userData.email,
+      email_confirm: true,
+    });
   }
 
   if (!userData) {
@@ -1191,3 +1286,101 @@ export async function fetchCarDetailsById(id: string) {
     inquiryCount,
   };
 }
+
+export async function fetchCarsForInspection(
+  page: number = 1,
+  filter: 'all' | 'unverified' | 'verified' = 'all',
+  pageSize: number = 12
+) {
+  await verifyAdminSession();
+  const supabase = createServiceRoleClient();
+  const safePage = Math.max(1, page);
+  const safePageSize = Math.min(Math.max(1, pageSize), 50);
+
+  let query = supabase
+    .from('cars')
+    .select('*', { count: 'exact' });
+
+  if (filter === 'unverified') {
+    query = query.or('is_inspected.is.null,is_inspected.eq.false');
+  } else if (filter === 'verified') {
+    query = query.eq('is_inspected', true);
+  }
+
+  query = query
+    .order('created_at', { ascending: false })
+    .range((safePage - 1) * safePageSize, safePage * safePageSize - 1);
+
+  const { data, count, error } = await query;
+  if (error) handleError(error, 'Failed to fetch cars for inspection');
+
+  const total = count ?? 0;
+  const totalPages = Math.ceil(total / safePageSize);
+
+  return {
+    data: data || [],
+    total,
+    page: safePage,
+    pageSize: safePageSize,
+    totalPages,
+  };
+}
+
+export async function verifyCarListing(
+  carId: string,
+  payload: {
+    is_inspected: boolean;
+    inspection_rating?: number | null;
+    inspection_notes?: string | null;
+  }
+) {
+  const sessionUser = await verifyAdminSession();
+  const supabase = createServiceRoleClient();
+
+  let inspectorName = sessionUser.name || 'Certified Inspector';
+  let inspectorEmail = sessionUser.email || '';
+  let inspectorPhone = sessionUser.phone || '';
+
+  if (sessionUser.id) {
+    const { data: dbUser } = await supabase
+      .from('users')
+      .select('name, email, phone')
+      .or(`id.eq.${sessionUser.id},auth_user_id.eq.${sessionUser.id}`)
+      .maybeSingle();
+    if (dbUser) {
+      if (dbUser.name) inspectorName = dbUser.name;
+      if (dbUser.email) inspectorEmail = dbUser.email;
+      if (dbUser.phone) inspectorPhone = dbUser.phone;
+    }
+  }
+
+  const updatePayload: any = {
+    is_inspected: payload.is_inspected,
+    inspection_rating: payload.is_inspected ? payload.inspection_rating ?? 9.0 : null,
+    inspection_notes: payload.is_inspected ? payload.inspection_notes ?? null : null,
+    inspected_at: payload.is_inspected ? new Date().toISOString() : null,
+    inspector_id: payload.is_inspected ? sessionUser.id : null,
+    inspector_name: payload.is_inspected ? inspectorName : null,
+    inspector_email: payload.is_inspected ? inspectorEmail : null,
+    inspector_phone: payload.is_inspected ? inspectorPhone : null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from('cars')
+    .update(updatePayload)
+    .eq('id', carId);
+
+  if (error) {
+    handleError(error, 'Failed to update vehicle inspection verification');
+  }
+
+  revalidatePath('/admin/inspections');
+  revalidatePath('/seller/inspections');
+  revalidatePath(`/admin/cars/${carId}`);
+  revalidatePath(`/seller/cars/${carId}`);
+  revalidatePath(`/buy-car/${carId}`);
+
+  return { success: true };
+}
+

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Edit,
@@ -38,16 +38,36 @@ import { toast } from 'sonner';
 import { fetchCarDetailsById, approveCar, rejectCar, deleteCar, updateCar, uploadImage, deleteStorageImage } from '@/lib/admin-actions';
 import { convertMultipleToWebP } from '@/lib/image-utils';
 
+const CAR_FEATURES_LIST = [
+  "Sunroof / Moonroof",
+  "Navigation / Touchscreen",
+  "Leather Seats",
+  "ABS Brakes",
+  "Airbags",
+  "Cruise Control",
+  "Alloy Rims",
+  "Reverse Camera",
+  "Push Start Button",
+  "Climate Control",
+  "Keyless Entry",
+  "Power Windows",
+];
+
+
 function formatPricePKR(price?: number): string {
   if (!price || isNaN(price)) return 'PKR 0';
-  if (price >= 10000000) {
-    const crore = (price / 10000000).toFixed(2);
+  let p = price;
+  while (p >= 1000000000) {
+    p = p / 100000;
+  }
+  if (p >= 10000000) {
+    const crore = (p / 10000000).toFixed(2);
     return `PKR ${crore} Crore`;
-  } else if (price >= 100000) {
-    const lacs = (price / 100000).toFixed(2);
+  } else if (p >= 100000) {
+    const lacs = (p / 100000).toFixed(2);
     return `PKR ${lacs} Lac`;
   }
-  return `PKR ${price.toLocaleString()}`;
+  return `PKR ${p.toLocaleString()}`;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -142,16 +162,61 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
     }
   }
 
-  const startEditing = () => {
-    if (!data?.car) return;
+function extractCarFeatures(featuresRaw: any, descriptionRaw?: string | null): { features: string[]; description: string } {
+  let list: string[] = [];
+
+  if (Array.isArray(featuresRaw) && featuresRaw.length > 0) {
+    list = featuresRaw.map(f => String(f).trim()).filter(Boolean);
+  } else if (typeof featuresRaw === 'string' && featuresRaw.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(featuresRaw);
+      if (Array.isArray(parsed)) {
+        list = parsed.map(f => String(f).trim()).filter(Boolean);
+      } else {
+        list = featuresRaw.split(',').map(f => f.trim()).filter(Boolean);
+      }
+    } catch {
+      list = featuresRaw.split(',').map(f => f.trim()).filter(Boolean);
+    }
+  }
+
+  let cleanDesc = descriptionRaw || '';
+
+  if (cleanDesc.includes('Features:')) {
+    const match = cleanDesc.match(/Features:\s*([^\n\r]+)/i);
+    if (match && match[1]) {
+      const extracted = match[1].split(',').map(f => f.trim()).filter(Boolean);
+      extracted.forEach(f => {
+        if (!list.includes(f)) {
+          list.push(f);
+        }
+      });
+      cleanDesc = cleanDesc.replace(/\n?Features:\s*[^\n\r]+/i, '').trim();
+    }
+  }
+
+  return { features: list, description: cleanDesc };
+}
+
+  const openEditModal = () => {
+    if (!data) return;
     const c = data.car;
     const s = data.sellerProfile;
+    const { features: parsedFeatures, description: cleanDescription } = extractCarFeatures(c.features, c.description);
+
+    let editPrice = c.price || '';
+    if (typeof editPrice === 'number') {
+      while (editPrice >= 1000000000) {
+        editPrice = editPrice / 100000;
+      }
+    }
+
     setEditForm({
       title: c.title || '',
       make: c.make || c.brand || '',
       model: c.model || '',
       year: c.year || new Date().getFullYear(),
-      price: c.price || '',
+      price: editPrice,
       mileage: c.mileage || '',
       engine: c.engine ? c.engine.toString().replace(/[^0-9]/g, '') : (c.engine_capacity ? c.engine_capacity.toString().replace(/[^0-9]/g, '') : ''),
       exterior_color: c.exterior_color || c.color || '',
@@ -162,8 +227,9 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
       city: c.city || '',
       seller_name: c.seller_name || s?.name || '',
       seller_phone: c.seller_phone || s?.phone || '',
-      description: c.description || '',
+      description: cleanDescription,
       status: c.status || 'pending',
+      features: parsedFeatures,
     });
     const imgs: string[] = Array.isArray(c.images) && c.images.length > 0
       ? [...c.images]
@@ -171,6 +237,13 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
     setEditImages(imgs);
     setIsEditing(true);
   };
+
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (data && searchParams.get('edit') === 'true' && !isEditing) {
+      openEditModal();
+    }
+  }, [data, searchParams]);
 
   const handleStatusChange = async (newStatus: 'approved' | 'rejected') => {
     try {
@@ -252,44 +325,53 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
       const computedTitle = editForm.title || `${editForm.year} ${editForm.make} ${editForm.model}`;
       const engineValue = editForm.engine ? `${editForm.engine} cc` : null;
 
-      const payload: any = {
-        title: computedTitle,
-        make: editForm.make,
-        brand: editForm.make,
-        model: editForm.model,
-        year: parseInt(String(editForm.year)) || new Date().getFullYear(),
-        price: parseFloat(String(editForm.price)) || 0,
-        currency: 'PKR',
-        mileage: editForm.mileage ? parseInt(String(editForm.mileage)) : null,
-        engine: engineValue,
-        engine_capacity: engineValue,
-        exterior_color: editForm.exterior_color || null,
-        interior_color: editForm.interior_color || null,
-        color: editForm.exterior_color || null,
-        body_type: editForm.body_type || 'Sedan',
-        fuel_type: editForm.fuel_type,
-        transmission: editForm.transmission,
-        city: editForm.city || null,
-        seller_name: editForm.seller_name || null,
-        seller_phone: editForm.seller_phone || null,
-        description: editForm.description || null,
-        status: editForm.status,
-        images: editImages,
-        image_url: editImages[0] || null,
-      };
+        const rawDesc = (editForm.description || '').replace(/\n?Features:\s*[^\n\r]+/i, '').trim();
+        const finalDesc = editForm.features && editForm.features.length > 0
+          ? `${rawDesc}\nFeatures: ${editForm.features.join(', ')}`.trim()
+          : (rawDesc || null);
 
-      await updateCar(id, payload);
-      toast.success('Vehicle listing updated successfully!');
-      
-      // Update local view state
-      setData((prev: any) => ({
-        ...prev,
-        car: {
-          ...prev.car,
-          ...payload,
-        },
-      }));
-      setIsEditing(false);
+          const cleanEditImages = editImages.filter((url: any) => typeof url === 'string' && url.trim().length > 0);
+
+          const payload: any = {
+            title: computedTitle,
+            make: editForm.make,
+            brand: editForm.make,
+            model: editForm.model,
+            year: parseInt(String(editForm.year)) || new Date().getFullYear(),
+            price: parseFloat(String(editForm.price)) || 0,
+            currency: 'PKR',
+            mileage: editForm.mileage ? parseInt(String(editForm.mileage)) : null,
+            engine: engineValue,
+            engine_capacity: engineValue,
+            exterior_color: editForm.exterior_color || null,
+            interior_color: editForm.interior_color || null,
+            color: editForm.exterior_color || null,
+            body_type: editForm.body_type || 'Sedan',
+            fuel_type: editForm.fuel_type,
+            transmission: editForm.transmission,
+            city: editForm.city || null,
+            seller_name: editForm.seller_name || null,
+            seller_phone: editForm.seller_phone || null,
+            description: finalDesc,
+            features: editForm.features || [],
+            status: editForm.status,
+            images: cleanEditImages,
+            image_url: cleanEditImages[0] || null,
+          };
+
+        await updateCar(id, payload);
+        toast.success('Vehicle listing updated successfully!');
+        
+        setActiveImageIndex(0);
+        // Update local view state
+        setData((prev: any) => ({
+          ...prev,
+          car: {
+            ...prev.car,
+            ...payload,
+          },
+        }));
+        setIsEditing(false);
     } catch (err: any) {
       toast.error(err.message || 'Failed to update vehicle listing');
     } finally {
@@ -330,12 +412,18 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
 
   const { car, sellerProfile, inquiryCount } = data;
 
-  const images: string[] =
+  const rawImages: string[] =
     Array.isArray(car.images) && car.images.length > 0
       ? car.images
       : car.image_url
       ? [car.image_url]
-      : ['https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=600&q=80'];
+      : [];
+
+  const cleanImages = rawImages.filter((u: any) => typeof u === 'string' && u.trim().length > 0);
+
+  const images: string[] = cleanImages;
+
+  const safeActiveIndex = activeImageIndex < images.length ? activeImageIndex : 0;
 
   const featuresList: string[] = Array.isArray(car.features)
     ? car.features
@@ -380,7 +468,7 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
               )}
 
               <button
-                onClick={startEditing}
+                onClick={openEditModal}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0055FE] hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20 cursor-pointer"
               >
                 <Edit className="w-4 h-4" /> Edit Vehicle
@@ -666,6 +754,46 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
             </div>
           </div>
 
+          {/* Section: Vehicle Features & Equipment */}
+          <div className="space-y-4 pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">
+                3b. Features & Vehicle Options
+              </h3>
+              <span className="text-xs font-semibold text-slate-500">
+                {(editForm.features || []).length} Selected
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+              {CAR_FEATURES_LIST.map((feat) => {
+                const checked = (editForm.features || []).includes(feat);
+                return (
+                  <button
+                    key={feat}
+                    type="button"
+                    onClick={() => {
+                      setEditForm((prev: any) => {
+                        const current = prev.features || [];
+                        const next = current.includes(feat)
+                          ? current.filter((f: string) => f !== feat)
+                          : [...current, feat];
+                        return { ...prev, features: next };
+                      });
+                    }}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer text-left ${
+                      checked
+                        ? "bg-blue-50 border-blue-200 text-[#0055FE]"
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    <CheckCircle className={`w-3.5 h-3.5 shrink-0 ${checked ? "text-[#0055FE]" : "text-slate-300"}`} />
+                    <span className="truncate">{feat}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Section 4: Image Management with Storage Bucket Deletion */}
           <div className="space-y-4 pt-4 border-t border-slate-100">
             <div className="flex items-center justify-between">
@@ -679,7 +807,7 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
 
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
               {editImages.map((imgUrl, idx) => (
-                <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden bg-slate-900 border border-slate-200 group shadow-xs">
+                <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 group shadow-xs">
                   <img src={imgUrl} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
                   <button
                     type="button"
@@ -774,29 +902,101 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
             </div>
           </div>
 
+          {/* Certified Inspector Verification Banner */}
+          {car.is_inspected && (
+            <div className="bg-emerald-50/90 border border-emerald-200 p-5 rounded-2xl shadow-xs flex flex-col justify-between gap-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/20">
+                    <CheckCircle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm font-black text-emerald-950 uppercase tracking-wide">
+                        CarFever Certified 200+ Point Inspected
+                      </h3>
+                      {car.inspection_rating && (
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-extrabold shadow-xs">
+                          ★ {car.inspection_rating} / 10
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs font-semibold text-emerald-800 mt-1">
+                      This vehicle has passed physical audit and technical verification by our certified inspection engineer team.
+                    </p>
+                  </div>
+                </div>
+
+                {car.inspected_at && (
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-3 py-1.5 rounded-xl self-start md:self-auto whitespace-nowrap">
+                    Inspected {new Date(car.inspected_at).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+
+              {/* Inspector Contact Info & Audit Notes */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-emerald-200/60">
+                <div className="bg-white/80 p-3 rounded-xl border border-emerald-200/60">
+                  <span className="text-[10px] font-extrabold uppercase text-emerald-900 tracking-wider block mb-1">
+                    Certified Inspector Details
+                  </span>
+                  <div className="text-xs font-bold text-slate-900">
+                    {car.inspector_name || "Official CarFever Inspector"}
+                  </div>
+                  {car.inspector_email && (
+                    <div className="text-[11px] font-medium text-slate-600 flex items-center gap-1 mt-0.5">
+                      <Mail className="w-3 h-3 text-emerald-600" /> {car.inspector_email}
+                    </div>
+                  )}
+                  {car.inspector_phone && (
+                    <div className="text-[11px] font-medium text-slate-600 flex items-center gap-1 mt-0.5">
+                      <Phone className="w-3 h-3 text-emerald-600" /> {car.inspector_phone}
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white/80 p-3 rounded-xl border border-emerald-200/60">
+                  <span className="text-[10px] font-extrabold uppercase text-emerald-900 tracking-wider block mb-1">
+                    Inspector Verification Notes
+                  </span>
+                  <p className="text-xs font-medium text-emerald-950 italic">
+                    "{car.inspection_notes || "All major components inspected and verified."}"
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Hero Grid: Gallery & Summary */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left: Interactive Image Gallery */}
             <div className="lg:col-span-2 space-y-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-              <div className="relative w-full h-80 md:h-96 rounded-2xl bg-slate-900 overflow-hidden border border-slate-200 group">
-                <img
-                  src={images[activeImageIndex] || images[0]}
-                  alt={car.title}
-                  className="w-full h-full object-cover transition-all duration-300"
-                />
-                <div className="absolute top-3 right-3 flex items-center gap-2">
-                  <button
-                    onClick={() => setLightboxOpen(true)}
-                    className="p-2 rounded-xl bg-black/70 hover:bg-black/90 text-white text-xs font-bold backdrop-blur-md transition-all cursor-pointer shadow-lg"
-                    title="Expand Fullscreen Image"
-                  >
-                    <Maximize2 className="w-4 h-4" />
-                  </button>
+              {images.length > 0 ? (
+                <div className="relative w-full h-80 md:h-96 rounded-2xl bg-slate-100 overflow-hidden border border-slate-200 group">
+                  <img
+                    src={images[safeActiveIndex] || images[0]}
+                    alt={car.title}
+                    className="w-full h-full object-cover transition-all duration-300"
+                  />
+                  <div className="absolute top-3 right-3 flex items-center gap-2">
+                    <button
+                      onClick={() => setLightboxOpen(true)}
+                      className="p-2 rounded-xl bg-black/70 hover:bg-black/90 text-white text-xs font-bold backdrop-blur-md transition-all cursor-pointer shadow-lg"
+                      title="Expand Fullscreen Image"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="absolute bottom-3 left-3 bg-black/75 backdrop-blur-md text-white text-xs font-bold px-3.5 py-1.5 rounded-full">
+                    Photo {safeActiveIndex + 1} of {images.length}
+                  </div>
                 </div>
-                <div className="absolute bottom-3 left-3 bg-black/75 backdrop-blur-md text-white text-xs font-bold px-3.5 py-1.5 rounded-full">
-                  Photo {activeImageIndex + 1} of {images.length}
+              ) : (
+                <div className="w-full h-80 md:h-96 rounded-2xl bg-slate-100 flex flex-col items-center justify-center border border-slate-200 text-slate-400">
+                  <CarIcon className="w-12 h-12 mb-2 stroke-1" />
+                  <span className="text-xs font-semibold">No Vehicle Photos Uploaded</span>
                 </div>
-              </div>
+              )}
 
               {/* Thumbnails Carousel */}
               {images.length > 1 && (
@@ -805,13 +1005,17 @@ export default function CarDetailsPage({ params }: { params: Promise<{ id: strin
                     <button
                       key={idx}
                       onClick={() => setActiveImageIndex(idx)}
-                      className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
-                        activeImageIndex === idx
+                      className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer bg-slate-100 ${
+                        safeActiveIndex === idx
                           ? 'border-[#0055FE] ring-2 ring-[#0055FE]/20 scale-105 shadow-md'
                           : 'border-slate-200 opacity-60 hover:opacity-100'
                       }`}
                     >
-                      <img src={imgUrl} alt="Thumbnail" className="w-full h-full object-cover" />
+                      <img
+                        src={imgUrl}
+                        alt="Thumbnail"
+                        className="w-full h-full object-cover"
+                      />
                     </button>
                   ))}
                 </div>

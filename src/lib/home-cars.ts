@@ -22,13 +22,22 @@ export type HomeCarCard = {
 
 export function mapDbCarToHomeCard(car: DbCar): HomeCarCard {
   const images = Array.isArray(car.images) ? (car.images as string[]) : [];
-  const lacs = car.price / 100000;
+  let p = car.price || 0;
+  while (p >= 1000000000) {
+    p = p / 100000;
+  }
   const currency = car.currency || "PKR";
-
+  let priceStr = "";
+  if (p >= 10000000) {
+    priceStr = `${currency} ${(p / 10000000).toFixed(2)} Crore`;
+  } else {
+    const lacs = p / 100000;
+    priceStr = `${currency} ${lacs % 1 === 0 ? lacs.toFixed(0) : lacs.toFixed(1)} Lacs`;
+  }
   return {
     id: car.id,
     title: car.title,
-    priceDisplay: `${currency} ${lacs % 1 === 0 ? lacs.toFixed(0) : lacs.toFixed(1)} Lacs`,
+    priceDisplay: priceStr,
     year: car.year,
     mileage: car.mileage ? `${car.mileage.toLocaleString()} km` : "N/A",
     fuel: car.fuel_type || "Petrol",

@@ -9,6 +9,7 @@ export type SessionUser = {
   auth_user_id: string;
   name: string;
   email: string;
+  phone?: string | null;
   role: string;
   status: string;
 };

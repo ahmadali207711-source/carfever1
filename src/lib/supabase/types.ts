@@ -86,6 +86,14 @@ export type DbCar = {
   seller_name: string | null;
   seller_email: string | null;
   seller_phone: string | null;
+  is_inspected?: boolean | null;
+  inspection_rating?: number | null;
+  inspection_notes?: string | null;
+  inspected_at?: string | null;
+  inspector_id?: string | null;
+  inspector_name?: string | null;
+  inspector_email?: string | null;
+  inspector_phone?: string | null;
   created_at: string;
   updated_at: string;
 };

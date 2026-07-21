@@ -32,14 +32,18 @@ import { fetchAdminCars, deleteCar, approveCar, rejectCar } from '@/lib/admin-ac
 
 function formatPricePKR(price?: number): string {
   if (!price || isNaN(price)) return 'PKR 0';
-  if (price >= 10000000) {
-    const crore = (price / 10000000).toFixed(2);
+  let p = price;
+  while (p >= 1000000000) {
+    p = p / 100000;
+  }
+  if (p >= 10000000) {
+    const crore = (p / 10000000).toFixed(2);
     return `PKR ${crore} Crore`;
-  } else if (price >= 100000) {
-    const lacs = (price / 100000).toFixed(2);
+  } else if (p >= 100000) {
+    const lacs = (p / 100000).toFixed(2);
     return `PKR ${lacs} Lac`;
   }
-  return `PKR ${price.toLocaleString()}`;
+  return `PKR ${p.toLocaleString()}`;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -350,7 +354,7 @@ export default function AdminCarsPage() {
 
                           {/* Edit Listing Button */}
                           <Link
-                            href={isSeller ? `/seller/cars/${car.id}` : `/admin/cars/${car.id}`}
+                            href={isSeller ? `/seller/cars/${car.id}?edit=true` : `/admin/cars/${car.id}?edit=true`}
                             prefetch={false}
                             title="Edit Listing Details & Photos"
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-[#0055FE] text-xs font-bold transition-all shadow-xs hover:border-blue-300"

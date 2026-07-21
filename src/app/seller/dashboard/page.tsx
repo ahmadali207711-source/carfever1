@@ -86,7 +86,7 @@ export default function SellerDashboardPage() {
           </div>
 
           <Link
-            href="/sell-car"
+            href="/seller/sell-car"
             className="inline-flex items-center gap-2 px-5 py-3 bg-white text-purple-900 hover:bg-purple-50 font-bold rounded-2xl text-xs transition-all shadow-lg shadow-black/10 active:scale-95 shrink-0"
           >
             <Plus className="w-4 h-4 text-purple-700" />
@@ -207,7 +207,7 @@ export default function SellerDashboardPage() {
             <p className="text-sm font-bold text-slate-700">No vehicle listings yet</p>
             <p className="text-xs text-slate-400 mt-1 mb-4">Post your first vehicle to reach thousands of buyers across Pakistan.</p>
             <Link
-              href="/sell-car"
+              href="/seller/sell-car"
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/20"
             >
               <Plus className="w-3.5 h-3.5" /> List Vehicle Now
@@ -239,6 +239,7 @@ export default function SellerDashboardPage() {
                   </span>
                   <Link
                     href={`/buy-car/${car.id}`}
+                    prefetch={false}
                     className="p-2 rounded-xl text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
                     title="View Listing Page"
                   >

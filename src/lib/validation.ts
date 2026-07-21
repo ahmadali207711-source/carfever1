@@ -16,6 +16,7 @@ export const CarListingSchema = z.object({
   sellerName: z.string().min(1, 'Seller name is required'),
   sellerPhone: z.string().min(1, 'Seller phone is required'),
   description: z.string().optional(),
+  features: z.array(z.string()).optional().default([]),
   images: z.array(z.string()).max(10, 'Maximum 10 images allowed').optional().default([]),
 });
 

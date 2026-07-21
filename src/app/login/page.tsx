@@ -65,6 +65,9 @@ export default function LoginPage() {
           } else if (metaRole === "seller") {
             window.location.href = "/seller/dashboard";
             return;
+          } else if (metaRole === "inspection_manager") {
+            window.location.href = "/admin/inspections";
+            return;
           } else {
             window.location.href = "/admin/dashboard";
             return;
@@ -84,16 +87,6 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const supabase = createClient();
-      const { data: authResult, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-
-      if (authError) {
-        throw new Error(authError.message);
-      }
-
       const result = await loginAdmin(email.trim(), password);
 
       if (result.success && result.user) {
@@ -101,6 +94,8 @@ export default function LoginPage() {
           window.location.href = "/";
         } else if (result.user.role === "seller") {
           window.location.href = "/seller/dashboard";
+        } else if (result.user.role === "inspection_manager") {
+          window.location.href = "/admin/inspections";
         } else {
           window.location.href = "/admin/dashboard";
         }

@@ -29,6 +29,7 @@ interface SellerMenuItem {
 const sellerMenuItems: SellerMenuItem[] = [
   { label: "Seller Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
   { label: "My Cars",         href: "/seller/cars",      icon: Car },
+  { label: "List Vehicle",    href: "/seller/sell-car",  icon: Plus },
   { label: "Inspections",     href: "/seller/inspections", icon: ShieldCheck },
   { label: "Inquiries",       href: "/seller/inquiries",   icon: MessageSquare },
   { label: "Profile Settings", href: "/seller/settings/profile", icon: User },
@@ -152,7 +153,7 @@ export default function SellerLayout({
         {/* Action Button */}
         <div className="p-4 border-b border-slate-100">
           <Link
-            href="/sell-car"
+            href="/seller/sell-car"
             className="w-full py-2.5 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-purple-500/20 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -308,7 +309,7 @@ export default function SellerLayout({
 
           <div className="flex items-center gap-3">
             <Link
-              href="/sell-car"
+              href="/seller/sell-car"
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl text-xs font-bold border border-purple-200 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />

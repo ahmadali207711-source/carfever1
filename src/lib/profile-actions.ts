@@ -37,20 +37,33 @@ export async function getProfile(): Promise<ProfileData> {
   const serviceClient = createServiceRoleClient();
   let dbUser: any = null;
 
-  if (sessionUser?.id) {
+  const searchId = sessionUser?.id;
+  const authId = sessionUser?.auth_user_id || user?.id;
+  const searchEmail = sessionUser?.email || user?.email;
+
+  if (searchId) {
     const { data } = await serviceClient
       .from('users')
       .select('id, name, email, phone, bio, role, avatar_url, created_at')
-      .eq('id', sessionUser.id)
+      .eq('id', searchId)
       .maybeSingle();
     dbUser = data;
   }
 
-  if (!dbUser && user?.id) {
+  if (!dbUser && authId) {
     const { data } = await serviceClient
       .from('users')
       .select('id, name, email, phone, bio, role, avatar_url, created_at')
-      .or(`auth_user_id.eq.${user.id},email.ilike.${user.email}`)
+      .eq('auth_user_id', authId)
+      .maybeSingle();
+    dbUser = data;
+  }
+
+  if (!dbUser && searchEmail) {
+    const { data } = await serviceClient
+      .from('users')
+      .select('id, name, email, phone, bio, role, avatar_url, created_at')
+      .ilike('email', searchEmail)
       .maybeSingle();
     dbUser = data;
   }
@@ -60,7 +73,7 @@ export async function getProfile(): Promise<ProfileData> {
       id: sessionUser.id,
       name: sessionUser.name || 'User',
       email: sessionUser.email,
-      phone: null,
+      phone: sessionUser.phone || null,
       bio: null,
       role: sessionUser.role,
       avatar_url: null,
@@ -72,7 +85,7 @@ export async function getProfile(): Promise<ProfileData> {
 
   return {
     ...dbUser,
-    auth_email: user?.email || dbUser.email || sessionUser?.email || '',
+    auth_email: dbUser.email || user?.email || sessionUser?.email || '',
   };
 }
 
@@ -106,15 +119,62 @@ export async function updateProfile(input: {
     payload.email = parsed.email.trim();
   }
 
+  let updated = false;
+
   if (targetId) {
-    const { error } = await serviceClient.from('users').update(payload).eq('id', targetId);
-    if (error) throw new Error(`Failed to update profile: ${error.message}`);
-  } else if (authUserId) {
-    const { error } = await serviceClient.from('users').update(payload).eq('auth_user_id', authUserId);
-    if (error) throw new Error(`Failed to update profile: ${error.message}`);
-  } else if (targetEmail) {
-    const { error } = await serviceClient.from('users').update(payload).ilike('email', targetEmail);
-    if (error) throw new Error(`Failed to update profile: ${error.message}`);
+    const { data } = await serviceClient
+      .from('users')
+      .update(payload)
+      .eq('id', targetId)
+      .select();
+    if (data && data.length > 0) updated = true;
+  }
+
+  if (!updated && authUserId) {
+    const { data } = await serviceClient
+      .from('users')
+      .update(payload)
+      .eq('auth_user_id', authUserId)
+      .select();
+    if (data && data.length > 0) updated = true;
+  }
+
+  if (!updated && targetEmail) {
+    const { data } = await serviceClient
+      .from('users')
+      .update(payload)
+      .ilike('email', targetEmail)
+      .select();
+    if (data && data.length > 0) updated = true;
+  }
+
+  if (!updated) {
+    const insertData: any = {
+      name: parsed.name,
+      email: parsed.email || targetEmail || 'user@example.com',
+      phone: parsed.phone || null,
+      bio: parsed.bio || null,
+      role: sessionUser?.role || 'buyer',
+      status: 'active',
+    };
+    if (authUserId) insertData.auth_user_id = authUserId;
+    if (targetId) insertData.id = targetId;
+
+    const { error: insertErr } = await serviceClient.from('users').insert(insertData);
+    if (insertErr) {
+      console.error('Insert fallback user error:', insertErr);
+    }
+  }
+
+  if (authUserId && parsed.email && parsed.email.trim() !== '') {
+    try {
+      await serviceClient.auth.admin.updateUserById(authUserId, {
+        email: parsed.email.trim(),
+        email_confirm: true,
+      });
+    } catch (authErr) {
+      console.error('Failed to sync auth user email:', authErr);
+    }
   }
 
   revalidatePath('/admin/settings/profile');

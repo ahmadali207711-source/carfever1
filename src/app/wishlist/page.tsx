@@ -32,7 +32,14 @@ function removeFromWishlist(carId: string): void {
 }
 
 function formatPrice(price: number): string {
-  return `PKR ${(price / 100000).toFixed(1)} Lacs`;
+  let p = price;
+  while (p >= 1000000000) {
+    p = p / 100000;
+  }
+  if (p >= 10000000) {
+    return `PKR ${(p / 10000000).toFixed(2)} Crore`;
+  }
+  return `PKR ${(p / 100000).toFixed(1)} Lacs`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,16 +63,19 @@ export default function WishlistPage() {
       const { data, error } = await supabase
         .from("cars")
         .select(
-          "id, title, make, model, year, price, currency, mileage, fuel_type, transmission, color, city, images, description, features, slug, condition, is_featured, created_at"
+          "id, title, brand, model, year, price, currency, mileage, fuel_type, transmission, color, city, images, description, features, slug, condition, is_featured, created_at"
         )
-        .in("id", ids)
-        .eq("status", "approved");
+        .in("id", ids);
 
       if (error) {
         console.error("Error fetching wishlist cars:", error);
         setWishlistCars([]);
       } else {
-        setWishlistCars((data ?? []) as ApprovedCar[]);
+        const mapped = (data ?? []).map((row: any) => ({
+          ...row,
+          make: row.make || row.brand || '',
+        }));
+        setWishlistCars(mapped as ApprovedCar[]);
       }
     } catch (err) {
       console.error("Wishlist fetch failed:", err);
@@ -189,7 +199,7 @@ export default function WishlistPage() {
                       </div>
 
                       <div className="mt-auto">
-                        <Link href={`/buy-car/${car.id}`}>
+                        <Link href={`/buy-car/${car.id}`} prefetch={false}>
                           <Button size="sm" className="w-full border border-[#0055FE] text-[#0055FE] hover:bg-blue-50 bg-white text-xs font-bold">
                             View Details
                           </Button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
@@ -23,15 +23,17 @@ import {
   Mail,
   FileText,
   DollarSign,
-  Loader2
+  Loader2,
+  Car as CarIcon,
 } from "lucide-react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getCarById, incrementCarViews, fetchApprovedCars, type ApprovedCar } from "@/lib/server-actions";
+import { getCarDetailsPageDataAction, type ApprovedCar } from "@/lib/server-actions";
 import { submitInquiry } from "@/lib/server-actions";
 
 export default function CarDetailsPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params?.id as string;
   
   const [activeImage, setActiveImage] = useState(0);
@@ -45,26 +47,54 @@ export default function CarDetailsPage() {
   const [car, setCar] = useState<ApprovedCar | null>(null);
   const [similarCars, setSimilarCars] = useState<ApprovedCar[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+
+  const loadedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!id) return;
+    if (loadedIdRef.current === id) return;
+    loadedIdRef.current = id;
+
+    let isMounted = true;
     async function loadCar() {
       setLoading(true);
-      const fetchedCar = await getCarById(id);
-      setCar(fetchedCar);
-      
-      // Increment views
-      await incrementCarViews(id);
-      
-      // Fetch similar cars (same brand)
-      if (fetchedCar) {
-        const { cars } = await fetchApprovedCars({ make: fetchedCar.make, limit: 5 });
-        setSimilarCars(cars.filter(c => c.id !== fetchedCar.id));
+      try {
+        const res = await getCarDetailsPageDataAction(id);
+        if (!isMounted) return;
+        setCar(res.car);
+        setUser(res.user);
+        setSimilarCars(res.similarCars);
+      } catch (err) {
+        console.error("Failed to load car details:", err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      setLoading(false);
     }
     
-    if (id) loadCar();
+    loadCar();
+    return () => { isMounted = false; };
   }, [id]);
+
+  const handleContactClick = () => {
+    if (!user) {
+      router.push('/register?redirect=' + encodeURIComponent(`/buy-car/${id}`));
+      return;
+    }
+    setContactOpen(true);
+    setFormSubmitted(false);
+    setFormError("");
+  };
+
+  const handleOfferClick = () => {
+    if (!user) {
+      router.push('/register?redirect=' + encodeURIComponent(`/buy-car/${id}`));
+      return;
+    }
+    setOfferOpen(true);
+    setFormSubmitted(false);
+    setFormError("");
+  };
 
   if (loading) {
     return (
@@ -90,15 +120,42 @@ export default function CarDetailsPage() {
     );
   }
   
-  // Helper to format price from number (in PKR, probably) to display string
   const formatPrice = (price: number) => {
     const lacs = price / 100000;
     return `PKR ${lacs.toFixed(1)} Lacs`;
   };
+
+  const formatPricePKR = (price?: number): string => {
+    if (!price || isNaN(price)) return 'PKR 0';
+    let p = price;
+    // Normalize legacy corrupted values (e.g. 500 Billion PKR)
+    while (p >= 1000000000) {
+      p = p / 100000;
+    }
+    if (p >= 10000000) {
+      const crore = (p / 10000000).toFixed(2);
+      return `PKR ${crore} Crore`;
+    } else if (p >= 100000) {
+      const lacs = (p / 100000).toFixed(2);
+      return `PKR ${lacs} Lac`;
+    }
+    return `PKR ${p.toLocaleString()}`;
+  };
+
+  const featuresList: string[] = (() => {
+    const f = (car as any).features;
+    return Array.isArray(f) ? f : typeof f === 'string' ? f.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+  })();
   
-  const images: string[] = Array.isArray(car.images) && car.images.length > 0 
+  const rawImages: string[] = Array.isArray(car.images) && car.images.length > 0 
     ? (car.images as string[])
-    : ['https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=600&q=80'];
+    : (car as any).image_url ? [(car as any).image_url] : [];
+  
+  const cleanImages = rawImages.filter((u: any) => typeof u === 'string' && u.trim().length > 0);
+  
+  const images: string[] = cleanImages;
+
+  const safeActiveImage = activeImage < images.length ? activeImage : 0;
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,32 +225,38 @@ export default function CarDetailsPage() {
             
             {/* Left: Gallery (60%) */}
             <div className="w-full lg:w-[60%]">
-              <div className="relative aspect-[16/10] rounded-2xl overflow-hidden mb-4 bg-gray-100 group border border-gray-200">
-                <img 
-                  src={images[activeImage]} 
-                  alt={car.title} 
-                  loading="lazy"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-                
-                {/* 360 View Badge / Button */}
-                <div className="absolute top-4 left-4">
-                  <Button size="sm" className="bg-white/90 backdrop-blur-md text-gray-900 hover:bg-white border border-gray-200 rounded-full h-9 shadow-sm">
-                    <CircleDot className="w-4 h-4 mr-2 text-[#0055FE] animate-pulse" />
-                    360° View
-                  </Button>
+              {images.length > 0 ? (
+                <div className="relative aspect-[16/10] rounded-2xl overflow-hidden mb-4 bg-gray-100 group border border-gray-200">
+                  <img 
+                    src={images[safeActiveImage]} 
+                    alt={car.title} 
+                    loading="lazy"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  
+                  {/* 360 View Badge / Button */}
+                  <div className="absolute top-4 left-4">
+                    <Button size="sm" className="bg-white/90 backdrop-blur-md text-gray-900 hover:bg-white border border-gray-200 rounded-full h-9 shadow-sm">
+                      <CircleDot className="w-4 h-4 mr-2 text-[#0055FE] animate-pulse" />
+                      360° View
+                    </Button>
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="absolute top-4 right-4 flex gap-2">
+                    <button className="p-2.5 rounded-full bg-white/90 backdrop-blur-md text-gray-600 hover:text-[#0055FE] hover:bg-white border border-gray-200 transition-all active:scale-90 shadow-sm">
+                      <Heart className="w-4 h-4" />
+                    </button>
+                    <button className="p-2.5 rounded-full bg-white/90 backdrop-blur-md text-gray-600 hover:text-[#0055FE] hover:bg-white border border-gray-200 transition-all active:scale-90 shadow-sm">
+                      <Share2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                
-                {/* Actions */}
-                <div className="absolute top-4 right-4 flex gap-2">
-                  <button className="p-2.5 rounded-full bg-white/90 backdrop-blur-md text-gray-600 hover:text-[#0055FE] hover:bg-white border border-gray-200 transition-all active:scale-90 shadow-sm">
-                    <Heart className="w-4 h-4" />
-                  </button>
-                  <button className="p-2.5 rounded-full bg-white/90 backdrop-blur-md text-gray-600 hover:text-[#0055FE] hover:bg-white border border-gray-200 transition-all active:scale-90 shadow-sm">
-                    <Share2 className="w-4 h-4" />
-                  </button>
+              ) : (
+                <div className="relative aspect-[16/10] rounded-2xl overflow-hidden mb-4 bg-gray-100 flex flex-col items-center justify-center border border-gray-200 text-gray-400">
+                  <span className="text-sm font-semibold">No Vehicle Photos Available</span>
                 </div>
-              </div>
+              )}
 
               {/* Thumbnails */}
               {images.length > 1 && (
@@ -202,11 +265,15 @@ export default function CarDetailsPage() {
                     <button 
                       key={idx}
                       onClick={() => setActiveImage(idx)}
-                      className={`relative w-24 h-16 sm:w-32 sm:h-20 shrink-0 rounded-lg overflow-hidden snap-center border-2 transition-all active:scale-95 ${
-                        activeImage === idx ? 'border-[#0055FE] scale-105 opacity-100 shadow-md' : 'border-transparent opacity-60 hover:opacity-100'
+                      className={`relative w-24 h-16 sm:w-32 sm:h-20 shrink-0 rounded-lg overflow-hidden snap-center border-2 transition-all active:scale-95 bg-gray-100 ${
+                        safeActiveImage === idx ? 'border-[#0055FE] scale-105 opacity-100 shadow-md' : 'border-transparent opacity-60 hover:opacity-100'
                       }`}
                     >
-                      <img src={img} alt={`Thumb ${idx}`} className="w-full h-full object-cover rounded-md" />
+                      <img
+                        src={img}
+                        alt={`Thumb ${idx}`}
+                        className="w-full h-full object-cover rounded-md"
+                      />
                     </button>
                   ))}
                 </div>
@@ -246,7 +313,7 @@ export default function CarDetailsPage() {
               </div>
 
               {/* Key Specs Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-3 xl:grid-cols-3 gap-3 mb-6 sm:mb-8">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 sm:mb-8">
                 <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-white border border-gray-200 shadow-sm">
                   <Calendar className="w-5 h-5 text-gray-400 mb-2" />
                   <span className="text-[10px] text-gray-500 font-medium">Year</span>
@@ -267,24 +334,45 @@ export default function CarDetailsPage() {
                 <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-white border border-gray-200 shadow-sm">
                   <Zap className="w-5 h-5 text-gray-400 mb-2" />
                   <span className="text-[10px] text-gray-500 font-medium">Engine</span>
-                  <span className="text-sm font-semibold text-gray-900">{car.transmission || 'N/A'}</span>
+                  <span className="text-sm font-semibold text-gray-900">{car.engine || car.engine_capacity || 'N/A'}</span>
                 </div>
-                <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-white border border-gray-200 shadow-sm col-span-2 sm:col-span-1">
+                <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-white border border-gray-200 shadow-sm">
                   <CircleDot className="w-5 h-5 text-gray-400 mb-2" />
                   <span className="text-[10px] text-gray-500 font-medium">Transmission</span>
                   <span className="text-sm font-semibold text-gray-900">{car.transmission || 'Automatic'}</span>
+                </div>
+                <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-white border border-gray-200 shadow-sm">
+                  <CarIcon className="w-5 h-5 text-gray-400 mb-2" />
+                  <span className="text-[10px] text-gray-500 font-medium">Body Type</span>
+                  <span className="text-sm font-semibold text-gray-900">{car.body_type || 'Sedan'}</span>
+                </div>
+              </div>
+
+              {/* Additional Specs */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Exterior Color</span>
+                  <span className="font-semibold text-gray-900">{car.exterior_color || car.color || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Interior Color</span>
+                  <span className="font-semibold text-gray-900">{car.interior_color || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Registration City</span>
+                  <span className="font-semibold text-gray-900">{car.city || 'N/A'}</span>
                 </div>
               </div>
 
               {/* Action Bar (hidden on mobile, sticky bottom bar instead) */}
               <div className="hidden lg:flex flex-col gap-3">
-                <Button onClick={() => { setContactOpen(true); setFormSubmitted(false); setFormError(""); }} size="lg" className="w-full bg-[#0055FE] hover:bg-blue-700 text-white font-bold h-14 text-base shadow-sm">
+                <Button onClick={handleContactClick} size="lg" className="w-full bg-[#0055FE] hover:bg-blue-700 text-white font-bold h-14 text-base shadow-sm">
                   <Phone className="w-5 h-5 mr-2" />
-                  Contact Seller
+                  {user ? 'Contact Seller' : 'Register to Contact Seller'}
                 </Button>
-                <Button onClick={() => { setOfferOpen(true); setFormSubmitted(false); setFormError(""); }} variant="outline" size="lg" className="w-full border-[#0055FE] text-[#0055FE] hover:bg-blue-50 h-14 text-base transition-colors bg-white">
+                <Button onClick={handleOfferClick} variant="outline" size="lg" className="w-full border-[#0055FE] text-[#0055FE] hover:bg-blue-50 h-14 text-base transition-colors bg-white">
                   <MessageSquare className="w-5 h-5 mr-2" />
-                  Make an Offer
+                  {user ? 'Make an Offer' : 'Register to Make Offer'}
                 </Button>
               </div>
 
@@ -312,18 +400,32 @@ export default function CarDetailsPage() {
             <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 min-h-[300px] shadow-sm">
               {activeTab === 'description' && (
                 <div className="text-gray-600 leading-relaxed space-y-4">
-                  <p>
+                  <div className="whitespace-pre-line">
                     {car.description || `Up for sale is a meticulously maintained ${car.title} ${car.year} model.`}
-                  </p>
+                  </div>
+                  <div className="border-t border-gray-100 pt-4 mt-4 grid grid-cols-2 gap-4 text-sm">
+                    <div><span className="text-gray-400">Make:</span> <span className="font-semibold text-gray-900">{car.make}</span></div>
+                    <div><span className="text-gray-400">Model:</span> <span className="font-semibold text-gray-900">{car.model}</span></div>
+                    <div><span className="text-gray-400">Year:</span> <span className="font-semibold text-gray-900">{car.year}</span></div>
+                    <div><span className="text-gray-400">Price:</span> <span className="font-semibold text-[#0055FE]">{formatPricePKR(car.price)}</span></div>
+                    <div><span className="text-gray-400">Mileage:</span> <span className="font-semibold text-gray-900">{car.mileage ? `${car.mileage.toLocaleString()} km` : 'N/A'}</span></div>
+                    <div><span className="text-gray-400">Fuel Type:</span> <span className="font-semibold text-gray-900">{car.fuel_type || 'Petrol'}</span></div>
+                    <div><span className="text-gray-400">Transmission:</span> <span className="font-semibold text-gray-900">{car.transmission || 'Automatic'}</span></div>
+                    <div><span className="text-gray-400">Body Type:</span> <span className="font-semibold text-gray-900">{car.body_type || 'Sedan'}</span></div>
+                    <div><span className="text-gray-400">Engine:</span> <span className="font-semibold text-gray-900">{car.engine || car.engine_capacity || 'N/A'}</span></div>
+                    <div><span className="text-gray-400">Exterior Color:</span> <span className="font-semibold text-gray-900">{car.exterior_color || car.color || 'N/A'}</span></div>
+                    <div><span className="text-gray-400">Interior Color:</span> <span className="font-semibold text-gray-900">{car.interior_color || 'N/A'}</span></div>
+                    <div><span className="text-gray-400">Location:</span> <span className="font-semibold text-gray-900">{car.city || 'N/A'}</span></div>
+                  </div>
                 </div>
               )}
               {activeTab === 'features' && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-8 text-sm text-gray-600">
-                  {Array.isArray(car.features) && car.features.length > 0 
-                    ? (car.features as string[]).map((feature, i) => (
+                  {featuresList.length > 0 
+                    ? featuresList.map((feature, i) => (
                         <div key={i} className="flex items-center gap-2">
                           <div className="w-1.5 h-1.5 rounded-full bg-[#0055FE]" />
-                          {String(feature)}
+                          {feature}
                         </div>
                       ))
                     : (
@@ -342,16 +444,105 @@ export default function CarDetailsPage() {
                 </div>
               )}
               {activeTab === 'inspection' && (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <ShieldCheck className="w-16 h-16 text-[#0055FE] mb-4 opacity-80" />
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Car Fever Certified</h3>
-                  <p className="text-gray-500 max-w-md mb-6">
-                    This vehicle has passed our rigorous 200+ point inspection process. 
-                    Engine, transmission, and suspension are in perfect working order.
-                  </p>
-                  <Button className="bg-[#0055FE] hover:bg-blue-700 text-white">
-                    Download Full Report
-                  </Button>
+                <div className="space-y-6">
+                  {car.is_inspected ? (
+                    <div className="bg-emerald-50/90 border border-emerald-200 p-6 rounded-2xl space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-lg shadow-md">
+                            <ShieldCheck className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-base font-black text-emerald-950 uppercase tracking-wide">
+                                Certified 200+ Point Inspection Report
+                              </h4>
+                              {car.inspection_rating && (
+                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-xs font-black">
+                                  ★ {car.inspection_rating} / 10
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs font-semibold text-emerald-800 mt-0.5">
+                              Verified by CarFever Certified Engineering Inspectors
+                            </p>
+                          </div>
+                        </div>
+
+                        {car.inspected_at && (
+                          <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1.5 rounded-xl self-start sm:self-auto">
+                            Audit Date: {new Date(car.inspected_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-emerald-200/60">
+                        <div className="bg-white/90 p-4 rounded-xl border border-emerald-200/80 space-y-1">
+                          <span className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider block">
+                            Assigned Inspector Details
+                          </span>
+                          <div className="text-sm font-black text-gray-900">
+                            {car.inspector_name || "Official CarFever Inspector"}
+                          </div>
+                          {car.inspector_email && (
+                            <div className="text-xs font-medium text-gray-600 flex items-center gap-1.5">
+                              <Mail className="w-3.5 h-3.5 text-emerald-600" /> {car.inspector_email}
+                            </div>
+                          )}
+                          {car.inspector_phone && (
+                            <div className="text-xs font-medium text-gray-600 flex items-center gap-1.5">
+                              <Phone className="w-3.5 h-3.5 text-emerald-600" /> {car.inspector_phone}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="bg-white/90 p-4 rounded-xl border border-emerald-200/80 space-y-1">
+                          <span className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider block">
+                            Inspector Summary & Audit Notes
+                          </span>
+                          <p className="text-xs font-medium text-emerald-950 italic leading-relaxed">
+                            "{car.inspection_notes || "Engine, suspension, electronics, and body structure verified genuine."}"
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <ShieldCheck className="w-16 h-16 text-[#0055FE] mb-4 opacity-80" />
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">CarFever Certified Inspection Available</h3>
+                      <p className="text-gray-500 max-w-md mb-6 text-sm">
+                        Physical inspection can be scheduled on-demand for this vehicle.
+                      </p>
+                      <Link href="/inspections">
+                        <Button className="bg-[#0055FE] hover:bg-blue-700 text-white font-bold">
+                          Schedule Vehicle Inspection
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Seller Information */}
+          <div className="mb-12 bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <User className="w-5 h-5 text-[#0055FE]" /> Seller Information
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Seller Name</span>
+                <span className="font-semibold text-gray-900">{car.seller_name || 'Individual Seller'}</span>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Contact Phone</span>
+                <span className="font-semibold text-gray-900">{car.seller_phone || 'Not specified'}</span>
+              </div>
+              {car.created_at && (
+                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Listed Date</span>
+                  <span className="font-semibold text-gray-900">{new Date(car.created_at).toLocaleDateString()}</span>
                 </div>
               )}
             </div>
@@ -369,7 +560,7 @@ export default function CarDetailsPage() {
               
               <div className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 scrollbar-hide">
                 {similarCars.map((similarCar) => (
-                  <Link key={similarCar.id} href={`/buy-car/${similarCar.id}`} className="min-w-[300px] sm:min-w-[350px] snap-center shrink-0 group rounded-xl overflow-hidden bg-white border border-gray-200 transition-all duration-300 hover:shadow-md hover:-translate-y-1 flex flex-col">
+                  <Link key={similarCar.id} href={`/buy-car/${similarCar.id}`} prefetch={false} className="min-w-[300px] sm:min-w-[350px] snap-center shrink-0 group rounded-xl overflow-hidden bg-white border border-gray-200 transition-all duration-300 hover:shadow-md hover:-translate-y-1 flex flex-col">
                     <div className="relative aspect-[16/11] overflow-hidden shrink-0">
                       <img
                         src={Array.isArray(similarCar.images) && similarCar.images.length > 0 
@@ -548,19 +739,19 @@ export default function CarDetailsPage() {
       {/* Sticky Bottom Bar for Mobile */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 p-3.5 flex gap-3 shadow-lg">
         <Button 
-          onClick={() => { setContactOpen(true); setFormSubmitted(false); setFormError(""); }} 
+          onClick={handleContactClick}
           className="flex-1 bg-[#0055FE] hover:bg-blue-700 text-white font-bold h-12 text-sm active:scale-95 transition-transform"
         >
           <Phone className="w-4 h-4 mr-2" />
-          Contact Seller
+          {user ? 'Contact Seller' : 'Register'}
         </Button>
         <Button 
-          onClick={() => { setOfferOpen(true); setFormSubmitted(false); setFormError(""); }} 
+          onClick={handleOfferClick}
           variant="outline" 
           className="flex-1 border-[#0055FE] text-[#0055FE] hover:bg-blue-50 bg-white h-12 text-sm active:scale-95 transition-transform"
         >
           <MessageSquare className="w-4 h-4 mr-2" />
-          Make Offer
+          {user ? 'Make Offer' : 'Register'}
         </Button>
       </div>
     </>
