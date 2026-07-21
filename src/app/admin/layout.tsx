@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { getAdminInitialData, logoutAdmin } from "@/lib/admin-actions";
+import { createClient } from "@/lib/supabase/client";
 
 interface MenuItem {
   label: string;
@@ -107,10 +108,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
 
   const handleLogout = async () => {
-    await logoutAdmin();
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {}
+    try {
+      await logoutAdmin();
+    } catch {}
     setAdminUser(null);
     setIsAuthenticated(false);
-    router.push("/login");
+    window.location.href = "/login";
   };
 
   if (pathname === "/admin/login" || pathname === "/login") return <>{children}</>;

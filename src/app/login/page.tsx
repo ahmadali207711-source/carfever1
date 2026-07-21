@@ -62,6 +62,9 @@ export default function LoginPage() {
           if (metaRole === "buyer") {
             window.location.href = "/";
             return;
+          } else if (metaRole === "seller") {
+            window.location.href = "/seller/dashboard";
+            return;
           } else {
             window.location.href = "/admin/dashboard";
             return;
@@ -79,7 +82,6 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    router.prefetch("/admin/dashboard");
 
     try {
       const supabase = createClient();
@@ -97,6 +99,8 @@ export default function LoginPage() {
       if (result.success && result.user) {
         if (result.user.role === "buyer") {
           window.location.href = "/";
+        } else if (result.user.role === "seller") {
+          window.location.href = "/seller/dashboard";
         } else {
           window.location.href = "/admin/dashboard";
         }

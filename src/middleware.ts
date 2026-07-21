@@ -2,15 +2,9 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { rateLimit } from '@/lib/rate-limit';
-
-const RATE_LIMIT_ACTIONS = ['login', 'signup', 'api'] as const;
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    || request.headers.get('x-real-ip')
-    || 'unknown';
 
   const response = NextResponse.next({ request });
 
@@ -25,10 +19,11 @@ export async function middleware(request: NextRequest) {
     response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }
 
-
-
-  // Only protect /admin/* (excluding login pages)
-  if (!pathname.startsWith('/admin') || pathname === '/admin/login' || pathname === '/login') {
+  // Exempt public pages and login endpoints
+  if (!pathname.startsWith('/admin') && !pathname.startsWith('/seller')) {
+    return response;
+  }
+  if (pathname === '/admin/login' || pathname === '/login') {
     return response;
   }
 
@@ -78,21 +73,36 @@ export async function middleware(request: NextRequest) {
     .eq('auth_user_id', user.id)
     .maybeSingle();
 
-  const PORTAL_ROLES = ['admin', 'content_manager', 'inspection_manager', 'seller', 'buyer'];
   const role = dbUser?.role || user.user_metadata?.role || 'buyer';
 
-  if (role === 'buyer' && pathname.startsWith('/admin')) {
-    return NextResponse.redirect(new URL('/', request.url));
+  // Security Gate for Admin Routes
+  if (pathname.startsWith('/admin')) {
+    if (role === 'seller') {
+      return NextResponse.redirect(new URL('/seller/dashboard', request.url));
+    }
+    if (role === 'buyer') {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    const ADMIN_ROLES = ['admin', 'content_manager', 'inspection_manager'];
+    if (!ADMIN_ROLES.includes(role)) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
 
-  if (!PORTAL_ROLES.includes(role)) {
-    const loginUrl = new URL('/login', request.url);
-    return NextResponse.redirect(loginUrl);
+  // Security Gate for Seller Routes
+  if (pathname.startsWith('/seller')) {
+    if (role === 'buyer') {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    const SELLER_PERMITTED_ROLES = ['seller', 'admin'];
+    if (!SELLER_PERMITTED_ROLES.includes(role)) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
 
   return supabaseResponse;
 }
 
 export const config = {
-  matcher: '/admin/:path*',
+  matcher: ['/admin/:path*', '/seller/:path*'],
 };

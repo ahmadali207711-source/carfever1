@@ -98,8 +98,9 @@ const ROLE_BASED_LINKS: Record<string, { label: string; href: string; icon: Reac
     { label: "Profile Settings", href: "/admin/settings/profile", icon: UserCog },
   ],
   seller: [
-    { label: "Sell Car", href: "/sell-car", icon: Car },
-    { label: "Profile Settings", href: "/admin/settings/profile", icon: UserCog },
+    { label: "Seller Console", href: "/seller/dashboard", icon: LayoutDashboard },
+    { label: "My Cars", href: "/seller/cars", icon: Car },
+    { label: "List New Car", href: "/sell-car", icon: Car },
   ],
 };
 

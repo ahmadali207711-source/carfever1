@@ -648,11 +648,14 @@ export async function loginAdmin(email: string, password: string) {
   return { success: true as const, user: userData };
 }
 
-export async function logoutAdmin(): Promise<void> {
-  const supabase = await createServerClient();
-  await supabase.auth.signOut();
-  revalidatePath('/login');
-  revalidatePath('/admin/login');
+export async function logoutAdmin(): Promise<{ success: boolean }> {
+  try {
+    const supabase = await createServerClient();
+    await supabase.auth.signOut();
+  } catch {
+    // Ignore errors during server signout
+  }
+  return { success: true };
 }
 
 // ============================================================================
