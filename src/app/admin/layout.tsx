@@ -46,6 +46,7 @@ const menuItems: MenuItem[] = [
   { label: "Manage Users",      href: "/admin/users",        icon: Users,           roles: ["admin"] },
   { label: "Dealers",           href: "/admin/dealers",      icon: Building2,       roles: ["admin"] },
   { label: "Site Settings",     href: "/admin/settings",     icon: Settings,        roles: ["admin"] },
+  { label: "Profile Settings",  href: "/admin/settings/profile", icon: UserCog,    roles: ["admin", "content_manager", "inspection_manager", "seller", "buyer"] },
 ];
 
 const ROLE_LABELS: Record<string, string> = {

@@ -31,6 +31,7 @@ const sellerMenuItems: SellerMenuItem[] = [
   { label: "My Cars",         href: "/seller/cars",      icon: Car },
   { label: "Inspections",     href: "/seller/inspections", icon: ShieldCheck },
   { label: "Inquiries",       href: "/seller/inquiries",   icon: MessageSquare },
+  { label: "Profile Settings", href: "/seller/settings/profile", icon: User },
 ];
 
 export default function SellerLayout({
@@ -340,6 +341,14 @@ export default function SellerLayout({
                     <p className="text-xs font-bold text-slate-900 truncate">{sellerUser?.name}</p>
                     <p className="text-[10px] text-slate-400 truncate">{sellerUser?.email}</p>
                   </div>
+                  <Link
+                    href="/seller/settings/profile"
+                    onClick={() => setUserDropdownOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+                  >
+                    <User className="w-3.5 h-3.5 text-slate-400" />
+                    Profile Settings
+                  </Link>
                   <Link
                     href="/"
                     className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
