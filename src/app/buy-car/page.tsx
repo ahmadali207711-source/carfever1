@@ -53,21 +53,35 @@ function isInWishlistId(id: string): boolean {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatPrice(price: number, currency?: string | null): string {
+  if (!price || isNaN(price)) return '£0';
+  const curr = currency || 'GBP';
+  if (curr === 'GBP' || curr === '£') {
+    return `£${price.toLocaleString('en-GB')}`;
+  }
+  if (curr === 'USD' || curr === '$') {
+    return `$${price.toLocaleString('en-US')}`;
+  }
+  if (curr === 'EUR' || curr === '€') {
+    return `€${price.toLocaleString('en-IE')}`;
+  }
   let p = price;
   while (p >= 1000000000) {
     p = p / 100000;
   }
-  const prefix = currency || 'PKR';
   if (p >= 10000000) {
-    return `${prefix} ${(p / 10000000).toFixed(2)} Crore`;
+    return `${curr} ${(p / 10000000).toFixed(2)} Crore`;
   }
-  const lacs = p / 100000;
-  return `${prefix} ${lacs % 1 === 0 ? lacs.toFixed(0) : lacs.toFixed(1)} Lacs`;
+  if (p >= 100000) {
+    const lacs = p / 100000;
+    return `${curr} ${lacs % 1 === 0 ? lacs.toFixed(0) : lacs.toFixed(1)} Lacs`;
+  }
+  return `${curr} ${p.toLocaleString()}`;
 }
 
-function formatMileage(km: number | null): string {
-  if (!km) return 'N/A';
-  return `${km.toLocaleString()} km`;
+function formatMileage(miles: number | null, currency?: string | null): string {
+  if (!miles) return 'N/A';
+  const unit = (currency === 'GBP' || currency === '£' || !currency) ? 'miles' : 'km';
+  return `${miles.toLocaleString()} ${unit}`;
 }
 
 // ─── Car Card ─────────────────────────────────────────────────────────────────
@@ -137,7 +151,7 @@ function CarCard({ car }: { car: ApprovedCar }) {
           <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
             <Gauge className="w-4 h-4 text-gray-400 shrink-0" />
             <span className="text-xs font-medium text-gray-700 truncate">
-              {formatMileage(car.mileage)}
+              {formatMileage(car.mileage, car.currency)}
             </span>
           </div>
           <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 col-span-2">

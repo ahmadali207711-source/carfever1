@@ -42,21 +42,29 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Car Fever — Premium Car Marketplace in Pakistan",
+    default: "Car Fever — Premium Verified Car Marketplace in UK",
     template: "%s | Car Fever",
   },
   description:
-    "Discover, buy, and sell premium vehicles on Pakistan's most trusted car marketplace. New & used cars, expert inspections, dealer comparisons, and the best prices nationwide.",
+    "Discover, buy, and sell premium vehicles on the UK's most trusted car marketplace. New & used cars, expert inspections, dealer comparisons, and certified UK model cards.",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.svg",
+    apple: "/icon.svg",
+  },
   keywords: [
-    "car marketplace Pakistan",
-    "buy cars Pakistan",
-    "sell cars Pakistan",
-    "used cars Pakistan",
-    "new cars Pakistan",
+    "car marketplace UK",
+    "buy cars UK",
+    "sell cars UK",
+    "used cars UK",
+    "new cars UK",
     "Car Fever",
     "car inspections",
-    "car dealers Pakistan",
-    "Pakistani car prices",
+    "car dealers UK",
+    "UK car prices",
   ],
   authors: [{ name: "Car Fever" }],
   creator: "Car Fever",
@@ -67,19 +75,19 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    locale: "en_PK",
+    locale: "en_GB",
     siteName: "Car Fever",
-    title: "Car Fever — Premium Car Marketplace in Pakistan",
+    title: "Car Fever — Premium Verified Car Marketplace in UK",
     description:
-      "Discover, buy, and sell premium vehicles on Pakistan's most trusted car marketplace.",
+      "Discover, buy, and sell premium vehicles on the UK's most trusted car marketplace.",
     url: siteUrl,
     images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Car Fever" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Car Fever — Premium Car Marketplace",
+    title: "Car Fever — Premium Verified Car Marketplace",
     description:
-      "Discover, buy, and sell premium vehicles on Pakistan's most trusted car marketplace.",
+      "Discover, buy, and sell premium vehicles on the UK's most trusted car marketplace.",
     images: ["/og-image.png"],
   },
   robots: {

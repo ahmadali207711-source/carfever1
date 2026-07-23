@@ -26,20 +26,31 @@ export function mapDbCarToHomeCard(car: DbCar): HomeCarCard {
   while (p >= 1000000000) {
     p = p / 100000;
   }
-  const currency = car.currency || "PKR";
+  const currency = car.currency || "GBP";
   let priceStr = "";
-  if (p >= 10000000) {
+  if (currency === "GBP" || currency === "£") {
+    priceStr = `£${p.toLocaleString('en-GB')}`;
+  } else if (currency === "USD" || currency === "$") {
+    priceStr = `$${p.toLocaleString('en-US')}`;
+  } else if (currency === "EUR" || currency === "€") {
+    priceStr = `€${p.toLocaleString('en-IE')}`;
+  } else if (p >= 10000000) {
     priceStr = `${currency} ${(p / 10000000).toFixed(2)} Crore`;
-  } else {
+  } else if (p >= 100000) {
     const lacs = p / 100000;
     priceStr = `${currency} ${lacs % 1 === 0 ? lacs.toFixed(0) : lacs.toFixed(1)} Lacs`;
+  } else {
+    priceStr = `${currency} ${p.toLocaleString()}`;
   }
+
+  const unit = (currency === 'GBP' || currency === '£') ? 'miles' : 'km';
+
   return {
     id: car.id,
     title: car.title,
     priceDisplay: priceStr,
     year: car.year,
-    mileage: car.mileage ? `${car.mileage.toLocaleString()} km` : "N/A",
+    mileage: car.mileage ? `${car.mileage.toLocaleString()} ${unit}` : "N/A",
     fuel: car.fuel_type || "Petrol",
     location: car.city || "N/A",
     image: images[0] || FALLBACK_IMAGE,

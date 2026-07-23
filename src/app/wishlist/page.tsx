@@ -31,15 +31,29 @@ function removeFromWishlist(carId: string): void {
   }
 }
 
-function formatPrice(price: number): string {
+function formatPrice(price: number, currency?: string | null): string {
+  if (!price || isNaN(price)) return '£0';
+  const curr = currency || 'GBP';
+  if (curr === 'GBP' || curr === '£') {
+    return `£${price.toLocaleString('en-GB')}`;
+  }
+  if (curr === 'USD' || curr === '$') {
+    return `$${price.toLocaleString('en-US')}`;
+  }
+  if (curr === 'EUR' || curr === '€') {
+    return `€${price.toLocaleString('en-IE')}`;
+  }
   let p = price;
   while (p >= 1000000000) {
     p = p / 100000;
   }
   if (p >= 10000000) {
-    return `PKR ${(p / 10000000).toFixed(2)} Crore`;
+    return `${curr} ${(p / 10000000).toFixed(2)} Crore`;
   }
-  return `PKR ${(p / 100000).toFixed(1)} Lacs`;
+  if (p >= 100000) {
+    return `${curr} ${(p / 100000).toFixed(1)} Lacs`;
+  }
+  return `${curr} ${p.toLocaleString()}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -167,7 +181,7 @@ export default function WishlistPage() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                       <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-md">
-                        <span className="text-sm font-bold text-[#0055FE]">{formatPrice(car.price)}</span>
+                        <span className="text-sm font-bold text-[#0055FE]">{formatPrice(car.price, car.currency)}</span>
                       </div>
                     </div>
 
