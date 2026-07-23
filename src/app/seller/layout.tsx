@@ -47,9 +47,20 @@ export default function SellerLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
+  const [showDelayedBtn, setShowDelayedBtn] = useState(false);
   const sessionCheckedRef = useRef(false);
 
   useEffect(() => {
+    // Show manual fallback button after 2.5s if still verifying
+    const btnTimer = setTimeout(() => setShowDelayedBtn(true), 2500);
+
+    // Hard 7s safety timeout to prevent getting stuck indefinitely
+    const safetyTimeout = setTimeout(() => {
+      if (!isAuthenticated) {
+        window.location.href = "/login";
+      }
+    }, 7000);
+
     if (sessionCheckedRef.current) return;
     sessionCheckedRef.current = true;
 
@@ -86,6 +97,11 @@ export default function SellerLayout({
     }
 
     initSeller();
+
+    return () => {
+      clearTimeout(btnTimer);
+      clearTimeout(safetyTimeout);
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -103,12 +119,28 @@ export default function SellerLayout({
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3 text-center">
           <div className="w-10 h-10 rounded-full border-3 border-[#0055FE] border-t-transparent animate-spin" />
           <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
             Verifying Seller Portal…
           </span>
+          {showDelayedBtn && (
+            <div className="flex flex-col sm:flex-row gap-2 mt-4">
+              <button
+                onClick={() => { window.location.href = "/login"; }}
+                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors shadow-sm cursor-pointer"
+              >
+                Return to Login
+              </button>
+              <button
+                onClick={() => { window.location.reload(); }}
+                className="px-4 py-2 bg-[#0055FE] text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm cursor-pointer"
+              >
+                Refresh Session
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
